@@ -137,3 +137,15 @@ cd TradeAdvisor
 - `docker version` shows only Client → Start Docker Desktop on Windows.
 - GPU test fails → update NVIDIA driver on Windows; ensure Docker Desktop is latest.
 - `ssh -T git@github.com` fails → re-add key to GitHub, or check you used the correct email during `ssh-keygen`.
+
+---
+
+## Environment Files (.env.local vs .env.example)
+
+- Use **.env.local** for your own machine — it contains real credentials and ports.  
+- Commit only **.env.example** to GitHub as a template for others.  
+- To start containers with your local file:  
+  ```bash
+  docker compose --env-file ../../.env.local up -d
+  ```
+- Never commit `.env.local` to GitHub — it’s already ignored via `.gitignore`.
