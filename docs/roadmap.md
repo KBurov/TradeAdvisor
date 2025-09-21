@@ -5,10 +5,11 @@ This roadmap outlines major milestones for the first 90 days of the project.
 ---
 
 ## Phase 1 — Foundation (Weeks 1–3)
-- ✅ Set up GitHub repository (docs, ADRs, README).
-- Configure development environments (Windows + WSL2, later Mac).
-- Install essentials: Git, Python, .NET 8, Docker, VS Code integration.
-- Document setup in `docs/setup-windows-wsl.md`.
+✅ Completed:
+- GitHub repository initialized (README, docs, ADRs).
+- Development environment configured on Windows + WSL2.
+- Essentials installed: Git, Python, .NET 8, Docker, VS Code.
+- Setup documented in [docs/setup-windows-wsl.md](docs/setup-windows-wsl.md).
 
 **Deliverables:**
 - Running dev environment with Docker/WSL2
@@ -17,14 +18,15 @@ This roadmap outlines major milestones for the first 90 days of the project.
 ---
 
 ## Phase 2 — Infrastructure Skeleton (Weeks 4–6)
-- Create Docker Compose stack with:
-  - PostgreSQL
-  - MinIO (S3-compatible)
-  - MLflow tracking server
-  - Kafka (or Redis Streams for local dev)
-- Define DB schema (prices, news, features, models, metrics, forecasts).
-- Add healthcheck REST API stubs (FastAPI + ASP.NET Core).
-- Add basic CI pipeline (lint, build, test).
+✅ Postgres + Adminer running locally via Docker Compose.
+
+In progress:
+- Add MinIO (S3-compatible) for artifact storage
+- Add MLflow tracking server
+- Add Kafka (or Redis Streams for dev)
+- Define DB schema (prices, news, features, models, metrics, forecasts)
+- Add healthcheck REST API stubs (FastAPI + ASP.NET Core)
+- Add basic CI pipeline (lint, build, test)
 
 **Deliverables:**
 - `docker-compose.yml`
