@@ -177,3 +177,37 @@ You can verify persistence by:
 1. Creating an experiment/run (see smoke test above).
 2. Restarting with `docker compose down && docker compose up -d`.
 3. Confirming that both artifacts (in MinIO) and runs (in MLflow UI) are still available.
+
+---
+
+## MLflow ↔ MinIO Smoke Test
+
+After starting the stack, you can verify that MLflow is able to log and retrieve artifacts
+via MinIO (S3-compatible storage).
+
+1. Activate the project’s Python virtual environment:
+   ```bash
+   cd ~/Projects/TradeAdvisor
+   source .venv/bin/activate
+   ```
+2. Install test requirements (once per venv):
+   ```bash
+   pip install -r scripts/requirements.txt
+   ```
+3. Run the smoke test script:
+   ```bash
+   python scripts/mlflow_smoke_test.py
+   ```
+   This script will:
+   - Create an experiment called **smoke-test**
+   - Log a parameter and a metric
+   - Upload a small artifact (`hello_mlflow.txt`) to MinIO
+4. Verify results:
+   - **MLflow UI** → http://localhost:5001
+     Open the `smoke-test` experiment and check the run contains parameters, metrics, and the artifact.
+   - **MinIO Console** → http://localhost:9001 (user: `minio` / pass: `minio123`)
+     Open the `mlflow` bucket and confirm the run’s artifacts are stored there.
+5. Deactivate the `venv` when done:
+   ```bash
+   deactivate
+   ```
