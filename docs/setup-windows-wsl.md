@@ -74,7 +74,7 @@ docker version
 docker run --rm --gpus all nvidia/cuda:12.4.1-base-ubuntu22.04 nvidia-smi
 ```
 
-You should see `NVIDIA-SMI` with your **GeForce RTX 2080**.
+You should see `NVIDIA-SMI` with your graphics card.
 
 ---
 
