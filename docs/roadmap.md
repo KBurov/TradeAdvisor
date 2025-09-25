@@ -19,10 +19,9 @@ This roadmap outlines major milestones for the first 90 days of the project.
 
 ## Phase 2 — Infrastructure Skeleton (Weeks 4–6)
 ✅ Postgres + Adminer running locally via Docker Compose.
+✅ MinIO + MLflow stack running with persistence (bind mounts, SQLite DB).
 
 In progress:
-- Add MinIO (S3-compatible) for artifact storage
-- Add MLflow tracking server
 - Add Kafka (or Redis Streams for dev)
 - Define DB schema (prices, news, features, models, metrics, forecasts)
 - Add healthcheck REST API stubs (FastAPI + ASP.NET Core)

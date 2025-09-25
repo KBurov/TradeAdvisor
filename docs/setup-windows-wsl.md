@@ -149,3 +149,31 @@ cd TradeAdvisor
   docker compose --env-file ../../.env.local up -d
   ```
 - Never commit `.env.local` to GitHub — it’s already ignored via `.gitignore`.
+
+---
+
+## Persistence for MinIO & MLflow
+
+By default, `docker compose down -v` deletes all volumes (including MinIO buckets and MLflow runs).
+To keep data between restarts:
+
+- We bind-mount MinIO and MLflow data into the repo’s `data/` folder:
+  - `data/minio/` → MinIO object storage
+  - `data/mlflow/` → MLflow backend DB (`mlflow.db`)
+
+- MLflow is configured with:
+  ```yaml
+  --backend-store-uri sqlite:////mlflow/mlflow.db
+  ```
+  which ensures its database is stored inside `data/mlflow/`.
+- Artifacts are stored in MinIO (bucket `mlflow`), so both runs and artifacts now survive container restarts.
+
+**Important:**
+- Use `docker compose down` (without `-v`) to stop services while preserving data.
+- Only use `-v` if you intentionally want to wipe everything (development reset).
+- The `data/` folder is ignored in `.gitignore`, so it won’t pollute your repo.
+
+You can verify persistence by:
+1. Creating an experiment/run (see smoke test above).
+2. Restarting with `docker compose down && docker compose up -d`.
+3. Confirming that both artifacts (in MinIO) and runs (in MLflow UI) are still available.
