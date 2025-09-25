@@ -728,3 +728,9 @@ FodyWeavers.xsd
 # Local env & venv
 .env.local
 .venv/
+
+# Local persistent data
+/data/
+# Local env & venv
+.env.local
+.venv/

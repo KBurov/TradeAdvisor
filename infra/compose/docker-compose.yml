@@ -38,7 +38,7 @@ services:
       - "${MINIO_PORT}:9000"
       - "${MINIO_CONSOLE_PORT}:9001"
     volumes:
-      - minio:/data
+      - ../../data/minio:/data
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 10s
@@ -68,9 +68,7 @@ services:
     ports:
       - "${MLFLOW_PORT}:${MLFLOW_PORT}"
     volumes:
-      - mlflow:/mlflow
+      - ../../data/mlflow:/mlflow
 
 volumes:
   pgdata: {}
-  minio: {}
-  mlflow: {}
