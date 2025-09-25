@@ -46,7 +46,10 @@ services:
       retries: 10
 
   mlflow:
-    image: ghcr.io/mlflow/mlflow:latest
+    build:
+      context: ../../infra/mlflow
+      dockerfile: Dockerfile
+    image: tradeadvisor-mlflow:local
     container_name: tradeadvisor-mlflow
     depends_on:
       - minio
@@ -54,7 +57,6 @@ services:
       MLFLOW_S3_ENDPOINT_URL: "http://minio:${MINIO_PORT}"
       AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
       AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
-      # Add these for MinIO friendliness:
       AWS_DEFAULT_REGION: us-east-1
       AWS_REGION: us-east-1
       AWS_S3_SIGNATURE_VERSION: s3v4
