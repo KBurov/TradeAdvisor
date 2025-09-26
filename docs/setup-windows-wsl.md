@@ -133,26 +133,42 @@ cd TradeAdvisor
 
 ---
 
-## Troubleshooting
-- `docker version` shows only Client → Start Docker Desktop on Windows.
-- GPU test fails → update NVIDIA driver on Windows; ensure Docker Desktop is latest.
-- `ssh -T git@github.com` fails → re-add key to GitHub, or check you used the correct email during `ssh-keygen`.
+## 11) MinIO & MLflow Setup (via Docker Compose)
 
----
+As part of the infrastructure stack, we run **MinIO** (S3-compatible object storage) and **MLflow** (experiment tracking).
+MLflow uses a **custom Docker image** (see `infra/mlflow/Dockerfile`) that must be **built** before first start.
 
-## Environment Files (.env.local vs .env.example)
+### Initial step (once)
 
-- Use **.env.local** for your own machine — it contains real credentials and ports.  
-- Commit only **.env.example** to GitHub as a template for others.  
-- To start containers with your local file:  
-  ```bash
-  docker compose --env-file ../../.env.local up -d
-  ```
-- Never commit `.env.local` to GitHub — it’s already ignored via `.gitignore`.
+- In the MinIO Console, create a **bucket named** `mlflow`.
+  This is where MLflow will store all run artifacts (models, logs, etc.).
 
----
+### Build (one-time, or whenever `infra/mlflow/Dockerfile` changes)
 
-## Persistence for MinIO & MLflow
+From the compose folder:
+
+```bash
+cd infra/compose
+# ensure .env exists here (copy from repo root if needed)
+cp ../../.env.local .env  # skip if you already have .env
+docker compose build mlflow
+```
+
+### Start / Restart services
+
+```bash
+docker compose up -d
+```
+
+### Accessing services
+
+- **Postgres Adminer** → http://localhost:8085
+  (login / password: `trade` / `trade`, DB: `trade`)
+- **MinIO Console** → http://localhost:9001
+  (login / password: `minio` / `minio123`)
+- **MLflow UI** → http://localhost:5001
+
+## 12) Persistence for MinIO & MLflow
 
 By default, `docker compose down -v` deletes all volumes (including MinIO buckets and MLflow runs).
 To keep data between restarts:
@@ -180,7 +196,7 @@ You can verify persistence by:
 
 ---
 
-## MLflow ↔ MinIO Smoke Test
+## 13) MLflow ↔ MinIO Smoke Test
 
 After starting the stack, you can verify that MLflow is able to log and retrieve artifacts
 via MinIO (S3-compatible storage).
@@ -211,3 +227,22 @@ via MinIO (S3-compatible storage).
    ```bash
    deactivate
    ```
+
+---
+
+## Troubleshooting
+- `docker version` shows only Client → Start Docker Desktop on Windows.
+- GPU test fails → update NVIDIA driver on Windows; ensure Docker Desktop is latest.
+- `ssh -T git@github.com` fails → re-add key to GitHub, or check you used the correct email during `ssh-keygen`.
+
+---
+
+## Environment Files (.env.local vs .env.example)
+
+- Use **.env.local** for your own machine — it contains real credentials and ports.  
+- Commit only **.env.example** to GitHub as a template for others.  
+- To start containers with your local file:  
+  ```bash
+  docker compose --env-file ../../.env.local up -d
+  ```
+- Never commit `.env.local` to GitHub — it’s already ignored via `.gitignore`.
