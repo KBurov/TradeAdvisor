@@ -212,7 +212,7 @@ via MinIO (S3-compatible storage).
    ```
 3. Run the smoke test script:
    ```bash
-   python scripts/mlflow_smoke_test.py
+   python scripts/tests/mlflow_smoke_test.py
    ```
    This script will:
    - Create an experiment called **smoke-test**
