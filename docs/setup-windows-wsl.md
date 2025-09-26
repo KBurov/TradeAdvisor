@@ -230,10 +230,72 @@ via MinIO (S3-compatible storage).
 
 ---
 
-## Troubleshooting
-- `docker version` shows only Client → Start Docker Desktop on Windows.
-- GPU test fails → update NVIDIA driver on Windows; ensure Docker Desktop is latest.
-- `ssh -T git@github.com` fails → re-add key to GitHub, or check you used the correct email during `ssh-keygen`.
+## 14) Kafka (local dev)
+
+We run a single-node **Kafka (KRaft mode)** and **Kafka UI** via Docker Compose.
+
+### Start / Restart
+
+From the compose folder:
+```bash
+cd infra/compose
+# ensure .env exists here (copy once from repo root if needed)
+cp ../../.env.local .env  # skip if already present
+docker compose up -d
+```
+
+### Access
+
+- **Kafka UI**: http://localhost:8086
+- **Bootstrap servers (host)**: localhost:9092
+- **Bootstrap servers (containers)**: kafka:9092
+  (We use **dual listeners** so both host and containers can connect.)
+
+### Persistence
+
+- Data is bind-mounted to `data/kafka/` (kept across restarts).
+- Use `docker compose down` (without -v) to stop while preserving data.
+
+### Create initial topics
+
+You can create topics in Kafka UI (Topics → Create), or via CLI:
+
+```bash
+docker exec -it tradeadvisor-kafka bash -lc '
+  /opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic prices.raw --partitions 3 --replication-factor 1
+  /opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic prices.features --partitions 3 --replication-factor 1
+  /opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic models.events --partitions 1 --replication-factor 1
+  /opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --list
+'
+```
+
+### Smoke test (produce / consume)
+
+Produce one JSON message to `prices.raw`:
+
+```bash
+docker exec -i tradeadvisor-kafka bash -lc \
+  'printf "%s\n" "{\"symbol\":\"AAPL\",\"ts\":\"2025-09-25T12:00:00Z\",\"price\":190.12}" \
+   | /opt/bitnami/kafka/bin/kafka-console-producer.sh --bootstrap-server kafka:9092 --topic prices.raw --producer-property acks=all'
+```
+
+Consume it back (from beginning):
+
+```bash
+docker exec -it tradeadvisor-kafka bash -lc \
+  '/opt/bitnami/kafka/bin/kafka-console-consumer.sh --bootstrap-server kafka:9092 --topic prices.raw --from-beginning --max-messages 1'
+```
+
+You should see the JSON echoed by the consumer.
+
+### Troubleshooting
+
+- **Kafka UI shows OFFLINE**: ensure it points to `kafka:9092` and that the broker advertises dual listeners.
+- **Permissions error on startup**: make sure `data/kafka` is owned by the image’s user:
+  ```bash
+  sudo chown -R 1001:1001 data/kafka
+  ```
+- **No messages consumed**: confirm you produced to `prices.raw` and consumed with `--from-beginning`.
 
 ---
 
@@ -246,3 +308,10 @@ via MinIO (S3-compatible storage).
   docker compose --env-file ../../.env.local up -d
   ```
 - Never commit `.env.local` to GitHub — it’s already ignored via `.gitignore`.
+
+---
+
+## Troubleshooting
+- `docker version` shows only Client → Start Docker Desktop on Windows.
+- GPU test fails → update NVIDIA driver on Windows; ensure Docker Desktop is latest.
+- `ssh -T git@github.com` fails → re-add key to GitHub, or check you used the correct email during `ssh-keygen`.
