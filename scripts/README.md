@@ -1,16 +1,18 @@
 # Scripts
 
-This folder contains helper scripts for development, testing, and validation.
+Helper scripts for development, validation, and experimentation.
 
-## Current scripts
+## Structure
 
-- **`tests/mlflow_smoke_test.py`**  
-  Quick check that MLflow can log parameters, metrics, and artifacts into MinIO.  
-  Used after first-time setup or whenever the stack is restarted.
+- **`tests/`** — lightweight smoke tests and validation checks  
+  (e.g., verifying that MLflow logs to MinIO).
+- **`utils/`** — developer utilities and one-off tasks  
+  (e.g., DB reset, data import/export).
+- **`experiments/`** — exploratory ML or data scripts not yet promoted into services.
 
 ## Dependencies
 
-Scripts may require Python packages listed in:
+All scripts share Python requirements listed in:
 
 ```bash
 scripts/requirements.txt
