@@ -1,142 +1,117 @@
-# Database Schema (Initial Draft)
+# Database Schema — Market Core (v001)
 
-This document outlines the initial PostgreSQL schema for TradeAdvisor.
-The schema will evolve as services mature.
+This document describes the **implemented** PostgreSQL schema as of migration `001_market_core.sql`.
+It will be updated with each new migration (`002_*`, `003_*`, …).
 
 ---
 
-## 1. Tickers
-Tracks stocks and ETFs under analysis.
+## Schema & Extension
+- **Schema:** `market`
+- **Extension:** `pg_trgm` (for fuzzy text search on instrument names)
+
+---
+
+## Tables
+
+### 1) `market.exchange`
+Reference list of trading venues.
+- **PK:** `exchange_id SERIAL`
+- **Unique:** `code` (e.g., `NASDAQ`, `NYSE`), optional `mic` (e.g., `XNAS`, `XNYS`)
+- **Fields:** `name`, `country` (default `US`), `timezone` (default `America/New_York`), `is_active` (default `true`)
+- **Purpose:** Normalize venue metadata; referenced by instruments.
+
+---
+
+### 2) `market.instrument`
+Canonical instruments (stocks, ETFs, etc.) with a stable ID.
+- **PK:** `instrument_id BIGSERIAL`
+- **FK:** `exchange_id → market.exchange(exchange_id)`
+- **Unique:** `(exchange_id, symbol)`; optional uniques: `figi`, `cik`, `isin`
+- **Indexes:** `GIN(name gin_trgm_ops)` for fuzzy search
+- **Fields:** `symbol`, `name`, `type` (`EQUITY`, `ETF`, …), `currency` (`USD`), `status` (`ACTIVE`/`DELISTED`/`SUSPENDED`), `created_at`, `updated_at`
+- **Purpose:** Stable identity for instruments even if symbols change.
+
+---
+
+### 3) `market.instrument_alias`
+Alternate identifiers and historical symbols.
+- **PK:** `alias_id BIGSERIAL`
+- **FK:** `instrument_id → market.instrument(instrument_id)` **ON DELETE CASCADE**
+- **Unique:** `(source, value)` (e.g., `('YAHOO','AAPL')`, `('OLD_SYMBOL','GOOG')`)
+- **Fields:** `source`, `value`
+- **Purpose:** Clean mapping to/from external providers and legacy names.
+
+---
+
+### 4) `market.universe`
+Named selection sets (watchlists / processing scopes).
+- **PK:** `universe_id SERIAL`
+- **Unique:** `code` (e.g., `core`, `etf-core`, `tech-watch`)
+- **Fields:** `name`, `description`
+- **Purpose:** Decouple “what exists” (instruments) from “what we process now”.
+
+---
+
+### 5) `market.universe_member`
+Temporal membership of instruments in universes.
+- **PK:** `(universe_id, instrument_id)`
+- **FKs:**  
+  - `universe_id → market.universe(universe_id)` **ON DELETE CASCADE**  
+  - `instrument_id → market.instrument(instrument_id)` **ON DELETE CASCADE**
+- **Fields:** `added_at` (default now), `removed_at` (NULL = active)
+- **Purpose:** Maintain history of additions/removals without losing auditability.
+
+---
+
+### 6) View: `market.v_universe_current`
+Convenience view of **current** (active) universe memberships.
+- **Columns:** `universe_code`, `universe_id`, `instrument_id`
+- **Definition:** joins `market.universe_member` to `market.universe` where `removed_at IS NULL`
+
+---
+
+## Seed Data (from `001_market_core.sql`)
+- Exchanges: `NASDAQ (XNAS)`, `NYSE (XNYS)`
+- Instruments: `AAPL`, `MSFT` (EQUITY), `QQQ` (ETF) on NASDAQ
+- Universe: `core` with `AAPL`, `MSFT`, `QQQ` as active members
+
+---
+
+## Common Queries
+
+### Current members of a universe
 
 ```sql
-CREATE TABLE tickers (
-    id SERIAL PRIMARY KEY,
-    symbol VARCHAR(16) UNIQUE NOT NULL,
-    name TEXT,
-    type VARCHAR(16) NOT NULL CHECK (type IN ('stock', 'etf')),
-    sector TEXT,
-    industry TEXT,
-    created_at TIMESTAMPTZ DEFAULT now(),
-    updated_at TIMESTAMPTZ DEFAULT now()
-);
+SELECT i.instrument_id, i.symbol
+FROM market.v_universe_current c
+JOIN market.instrument i USING (instrument_id)
+WHERE c.universe_code = 'core'
+ORDER BY i.symbol;
+```
+
+### Resolve by exact symbol + exchange
+
+```sql
+SELECT i.instrument_id, i.symbol
+FROM market.instrument i
+JOIN market.exchange e ON e.exchange_id = i.exchange_id
+WHERE i.symbol = 'AAPL' AND e.code = 'NASDAQ';
+```
+
+### Resolve via alias (e.g., from a provider)
+
+```sql
+SELECT i.instrument_id, i.symbol
+FROM market.instrument_alias a
+JOIN market.instrument i ON i.instrument_id = a.instrument_id
+WHERE a.source = 'YAHOO' AND a.value = 'AAPL';
 ```
 
 ---
 
-## 2. Prices
-Historical and live OHLCV (Open, High, Low, Close, Volume).
+## Notes & Rationale
 
-```sql
-CREATE TABLE prices (
-    id BIGSERIAL PRIMARY KEY,
-    ticker_id INT REFERENCES tickers(id),
-    ts TIMESTAMPTZ NOT NULL,
-    open NUMERIC(18,6),
-    high NUMERIC(18,6),
-    low NUMERIC(18,6),
-    close NUMERIC(18,6),
-    volume BIGINT,
-    UNIQUE (ticker_id, ts)
-) PARTITION BY RANGE (ts);
-```
-
-Partitioning strategy: monthly partitions (e.g., `prices_2025_01`).
-
----
-
-## 3. Features
-Stores computed technical indicators, windowed statistics, etc.
-
-```sql
-CREATE TABLE features (
-    id BIGSERIAL PRIMARY KEY,
-    ticker_id INT REFERENCES tickers(id),
-    ts TIMESTAMPTZ NOT NULL,
-    feature JSONB NOT NULL,
-    UNIQUE (ticker_id, ts)
-);
-```
-
-Indexes:
-- GIN index on feature for JSON queries
-- btree on (ticker_id, ts)
-
----
-
-## 4. News & Social
-Ingested news headlines and social media posts.
-
-```sql
-CREATE TABLE news_social (
-    id BIGSERIAL PRIMARY KEY,
-    ticker_id INT REFERENCES tickers(id),
-    ts TIMESTAMPTZ NOT NULL,
-    source VARCHAR(32),
-    headline TEXT,
-    sentiment NUMERIC(5,4),  -- range -1.0 to 1.0
-    meta JSONB
-);
-```
-
----
-
-## 5. Models
-Registered models and metadata.
-
-```sql
-CREATE TABLE models (
-    id SERIAL PRIMARY KEY,
-    name TEXT NOT NULL,
-    version TEXT NOT NULL,
-    framework TEXT,         -- e.g. pytorch, tensorflow, lightgbm
-    path TEXT,              -- storage location in MinIO/S3
-    created_at TIMESTAMPTZ DEFAULT now(),
-    registered_by TEXT,
-    UNIQUE (name, version)
-);
-```
-
----
-
-## 6. Forecasts
-Stores model forecasts for each ticker at a given timestamp.
-
-```sql
-CREATE TABLE forecasts (
-    id BIGSERIAL PRIMARY KEY,
-    ticker_id INT REFERENCES tickers(id),
-    model_id INT REFERENCES models(id),
-    ts TIMESTAMPTZ NOT NULL,
-    horizon INTERVAL,       -- e.g. 1d, 1h
-    forecast NUMERIC(18,6),
-    confidence NUMERIC(5,4),
-    created_at TIMESTAMPTZ DEFAULT now()
-);
-```
-
----
-
-## 7. Backtests
-Tracks evaluation results of models.
-
-```sql
-CREATE TABLE backtests (
-    id SERIAL PRIMARY KEY,
-    model_id INT REFERENCES models(id),
-    strategy TEXT,
-    start_ts TIMESTAMPTZ,
-    end_ts TIMESTAMPTZ,
-    sharpe NUMERIC(8,4),
-    sortino NUMERIC(8,4),
-    max_drawdown NUMERIC(8,4),
-    meta JSONB,
-    created_at TIMESTAMPTZ DEFAULT now()
-);
-```
-
----
-
-## Notes
-- Use uuid keys later for distributed safety if needed.
-- Keep schema migrations under version control (Alembic for Python, EF Migrations for .NET).
-- Revisit partitioning & indexing strategy once data grows.
+- Use the **stable** `instrument_id` everywhere (prices, features, forecasts) to avoid identity issues on symbol changes.
+- **Universes** give a flexible “selected set” mechanism with temporal history via `removed_at`.
+- **Aliases** centralize cross-provider mappings.
+- The **trigram index** on name supports admin/search tooling and data cleaning.
