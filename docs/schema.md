@@ -115,3 +115,25 @@ WHERE a.source = 'YAHOO' AND a.value = 'AAPL';
 - **Universes** give a flexible “selected set” mechanism with temporal history via `removed_at`.
 - **Aliases** centralize cross-provider mappings.
 - The **trigram index** on name supports admin/search tooling and data cleaning.
+
+---
+
+## 7) `market.price_daily` (v002)
+
+Daily OHLCV per instrument, **partitioned monthly** on `trade_date`.
+
+- **PK:** `(instrument_id, trade_date)`
+- **FK:** `instrument_id → market.instrument(instrument_id)` (CASCADE on delete)
+- **Columns:** `open`, `high`, `low`, `close`, `adj_close?`, `volume`, `source`, `updated_at`
+- **Partitioning:** `PARTITION BY RANGE (trade_date)` with one child table per month
+- **Index:** `ix_price_daily_trade_date` (partitioned index on `trade_date`)
+
+**Rationale**
+- Daily bars don’t need time zones → `trade_date DATE`.
+- Monthly partitions keep indexes small and enable fast date-range queries.
+- Easy retention/archival (detach/drop older partitions if needed).
+- `PRIMARY KEY (instrument_id, trade_date)` prevents duplicates from multiple providers.
+
+**Notes**
+- Insert/upsert should use the **canonical `instrument_id`** (resolve via symbol/alias first).
+- For intraday bars later, we will add a separate partitioned table (e.g., `price_intraday`).
