@@ -90,6 +90,33 @@ Daily OHLCV per instrument, **partitioned monthly** on `trade_date`.
 
 ---
 
+### 8) `market.feature_daily` (v003)
+
+Daily feature payloads per instrument. Supports multiple pipelines per day.
+
+- **PK:** `(instrument_id, trade_date, pipeline)`
+- **FK:** `instrument_id → market.instrument(instrument_id)` (CASCADE on delete)
+- **Columns:**  
+  - `pipeline TEXT` — feature set name (e.g., `tech`, `nlp`, `risk`, `default`)  
+  - `version TEXT` — optional pipeline version tag  
+  - `features JSONB` — computed features (flexible schema)  
+  - `updated_at TIMESTAMPTZ` — audit timestamp
+- **Indexes:**  
+  - `ix_feature_daily_trade_date` (btree)  
+  - `ix_feature_daily_instrument` (btree)  
+  - `ix_feature_daily_features_gin` (GIN on `features`)
+
+**Rationale**
+- JSONB keeps the schema flexible while we iterate on features.
+- `pipeline` lets us store multiple independent feature sets for the same day.
+- GIN index enables fast existence/containment queries on feature keys.
+
+**Notes**
+- Always join/resolve with **`instrument_id`** (canonical id).
+- Consider adding **expression indexes** later for hot features (e.g., `((features->>'rsi_14')::numeric)`).
+
+---
+
 ## Seed Data (from `001_market_core.sql`)
 - Exchanges: `NASDAQ (XNAS)`, `NYSE (XNYS)`
 - Instruments: `AAPL`, `MSFT` (EQUITY), `QQQ` (ETF) on NASDAQ
