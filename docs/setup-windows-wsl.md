@@ -32,12 +32,15 @@ sudo apt-get install -y git build-essential make curl wget unzip jq ca-certifica
 
 ---
 
-## 4) Python 3.11 (inside Ubuntu)
+## 4) Python (system default, 3.12+) (inside Ubuntu)
 
 ```bash
 sudo apt-get install -y python3 python3-venv python3-pip
 python3 --version
 pip3 --version
+# Always work inside a venv for project isolation
+python3 -m venv .venv
+source .venv/bin/activate
 ```
 
 ---
@@ -140,8 +143,9 @@ MLflow uses a **custom Docker image** (see `infra/mlflow/Dockerfile`) that must 
 
 ### Initial step (once)
 
-- In the MinIO Console, create a **bucket named** `mlflow`.
-  This is where MLflow will store all run artifacts (models, logs, etc.).
+- In the MinIO Console (http://localhost:9001), manually create a **bucket named** `mlflow`.
+  MLflow will use this bucket to store all run artifacts (models, metrics, logs, etc.).
+  Without this bucket, artifact uploads in smoke tests or real runs will fail.
 
 ### Build (one-time, or whenever `infra/mlflow/Dockerfile` changes)
 
@@ -173,10 +177,12 @@ docker compose up -d
 By default, `docker compose down -v` deletes all volumes (including MinIO buckets and MLflow runs).
 To keep data between restarts:
 
-- We bind-mount MinIO and MLflow data into the repo’s `data/` folder:
-  - `data/minio/` → MinIO object storage
+- We bind-mount service data into the repo’s `data/` folder:
+  - `data/minio/` → MinIO object storage (all buckets and objects)
   - `data/mlflow/` → MLflow backend DB (`mlflow.db`)
+  - `data/kafka/` → Kafka logs and topic data
 
+- These folders are ignored via `.gitignore`, so they never pollute Git history.
 - MLflow is configured with:
   ```yaml
   --backend-store-uri sqlite:////mlflow/mlflow.db
@@ -198,8 +204,8 @@ You can verify persistence by:
 
 ## 13) MLflow ↔ MinIO Smoke Test
 
-After starting the stack, you can verify that MLflow is able to log and retrieve artifacts
-via MinIO (S3-compatible storage).
+After starting the stack, verify that MLflow can log runs and upload artifacts to MinIO.
+This requires the `mlflow` bucket to already exist (create it once in MinIO console).
 
 1. Activate the project’s Python virtual environment:
    ```bash
@@ -208,7 +214,7 @@ via MinIO (S3-compatible storage).
    ```
 2. Install test requirements (once per venv):
    ```bash
-   pip install -r scripts/requirements.txt
+   pip install -r scripts/requirements.txt   # (use this venv requirements file for smoke test)
    ```
 3. Run the smoke test script:
    ```bash
@@ -290,7 +296,24 @@ You should see the JSON echoed by the consumer.
 
 ### Troubleshooting
 
-- **Kafka UI shows OFFLINE**: ensure it points to `kafka:9092` and that the broker advertises dual listeners.
+- **Kafka UI shows OFFLINE**: check that it points to `kafka:9092` and the broker advertises both host (`localhost:9092`) and container (`kafka:9092`) listeners.
+  - **Check listeners inside Kafka container**:
+    - **Host listener (EXTERNAL)**:  
+      Run on the host (Ubuntu terminal):  
+      ```bash
+      ss -lntp | grep -E ":9092"
+      ```  
+      You should see a line like:  
+      ```
+      LISTEN 0      4096                *:9092             *:*
+      ```  
+      This confirms the broker is reachable from the host at `localhost:9092`.
+    - **Internal listener (INTERNAL)**:  
+      The Bitnami image is minimal (no `ss`/`netstat`). Use Kafka CLI to verify the internal listener:  
+      ```bash
+      docker exec -it tradeadvisor-kafka bash -lc '/opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --list'
+      ```  
+      If topics are listed (e.g., `prices.raw`, `prices.features`, `models.events`), the internal `kafka:9092` listener is healthy.
 - **Permissions error on startup**: make sure `data/kafka` is owned by the image’s user:
   ```bash
   sudo chown -R 1001:1001 data/kafka
@@ -308,6 +331,8 @@ You should see the JSON echoed by the consumer.
   docker compose --env-file ../../.env.local up -d
   ```
 - Never commit `.env.local` to GitHub — it’s already ignored via `.gitignore`.
+  Similarly, `.venv/` (Python virtual environment) and `data/` (service volumes for MinIO, MLflow, Kafka)
+  are also ignored to avoid polluting the repo.
 
 ---
 
