@@ -6,6 +6,7 @@ It will be updated with each new migration (`003_*`, `004_*`, …).
 ---
 
 ## Schema & Extension
+
 - **Schema:** `market`
 - **Extension:** `pg_trgm` (for fuzzy text search on instrument names)
 
@@ -13,7 +14,8 @@ It will be updated with each new migration (`003_*`, `004_*`, …).
 
 ## Tables
 
-### 1) `market.exchange`
+### 1) `market.exchange` (001)
+
 Reference list of trading venues.
 - **PK:** `exchange_id SERIAL`
 - **Unique:** `code` (e.g., `NASDAQ`, `NYSE`), optional `mic` (e.g., `XNAS`, `XNYS`)
@@ -22,7 +24,8 @@ Reference list of trading venues.
 
 ---
 
-### 2) `market.instrument`
+### 2) `market.instrument` (001)
+
 Canonical instruments (stocks, ETFs, etc.) with a stable ID.
 - **PK:** `instrument_id BIGSERIAL`
 - **FK:** `exchange_id → market.exchange(exchange_id)`
@@ -33,7 +36,8 @@ Canonical instruments (stocks, ETFs, etc.) with a stable ID.
 
 ---
 
-### 3) `market.instrument_alias`
+### 3) `market.instrument_alias` (001)
+
 Alternate identifiers and historical symbols.
 - **PK:** `alias_id BIGSERIAL`
 - **FK:** `instrument_id → market.instrument(instrument_id)` **ON DELETE CASCADE**
@@ -43,7 +47,8 @@ Alternate identifiers and historical symbols.
 
 ---
 
-### 4) `market.universe`
+### 4) `market.universe` (001)
+
 Named selection sets (watchlists / processing scopes).
 - **PK:** `universe_id SERIAL`
 - **Unique:** `code` (e.g., `core`, `etf-core`, `tech-watch`)
@@ -52,7 +57,8 @@ Named selection sets (watchlists / processing scopes).
 
 ---
 
-### 5) `market.universe_member`
+### 5) `market.universe_member` (001)
+
 Temporal membership of instruments in universes.
 - **PK:** `(universe_id, instrument_id)`
 - **FKs:**  
@@ -63,7 +69,8 @@ Temporal membership of instruments in universes.
 
 ---
 
-### 6) View: `market.v_universe_current`
+### 6) View: `market.v_universe_current` (001)
+
 Convenience view of **current** (active) universe memberships.
 - **Columns:** `universe_code`, `universe_id`, `instrument_id`
 - **Definition:** joins `market.universe_member` to `market.universe` where `removed_at IS NULL`
@@ -71,6 +78,7 @@ Convenience view of **current** (active) universe memberships.
 ---
 
 ### 7) `market.price_daily` (v002)
+
 Daily OHLCV per instrument, **partitioned monthly** on `trade_date`.
 - **PK:** `(instrument_id, trade_date)`
 - **FK:** `instrument_id → market.instrument(instrument_id)` (CASCADE on delete)
@@ -167,14 +175,8 @@ Links news/social items to instruments.
 
 ---
 
-## Seed Data (from `001_market_core.sql`)
-- Exchanges: `NASDAQ (XNAS)`, `NYSE (XNYS)`
-- Instruments: `AAPL`, `MSFT` (EQUITY), `QQQ` (ETF) on NASDAQ
-- Universe: `core` with `AAPL`, `MSFT`, `QQQ` as active members
-
----
-
 ### 11) `market.sector` (v005)
+
 Reference table for sectors.
 - **PK:** `sector_id`
 - **Unique:** `code`
@@ -183,6 +185,7 @@ Reference table for sectors.
 ---
 
 ### 12) `market.industry` (v005)
+
 Reference table for industries (optionally linked to sector).
 - **PK:** `industry_id`
 - **Unique:** `code`
@@ -192,6 +195,7 @@ Reference table for industries (optionally linked to sector).
 ---
 
 ### 13) `market.instrument_classification` (v005)
+
 Temporal classification (SCD2-lite) of instruments into sector/industry.
 - **PK:** `(instrument_id, valid_from)`
 - **FKs:**  
@@ -208,6 +212,7 @@ Temporal classification (SCD2-lite) of instruments into sector/industry.
 ---
 
 ### 14) `market.etf_holding` (v005)
+
 ETF composition snapshots (constituents & weights) by `as_of_date`.
 - **PK:** `(etf_id, component_id, as_of_date)`
 - **FKs:** both `etf_id` and `component_id` → `market.instrument(instrument_id)` [CASCADE]
@@ -217,6 +222,14 @@ ETF composition snapshots (constituents & weights) by `as_of_date`.
 **Rationale**
 - Supports ETF-driven dependencies and sector/industry rollups.
 - Enables features like “ETF-weighted sentiment” or “component-weighted returns”.
+
+---
+
+## Seed Data (from `001_market_core.sql`)
+
+- Exchanges: `NASDAQ (XNAS)`, `NYSE (XNYS)`
+- Instruments: `AAPL`, `MSFT` (EQUITY), `QQQ` (ETF) on NASDAQ
+- Universe: `core` with `AAPL`, `MSFT`, `QQQ` as active members
 
 ---
 
