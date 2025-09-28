@@ -1,7 +1,30 @@
 # Database Schema
 
-This document describes the **implemented** PostgreSQL schema as of migration `002_price_daily.sql`.  
+This document describes the **implemented** PostgreSQL schema as of migration `005_price_daily.sql`.  
 It will be updated with each new migration (`003_*`, `004_*`, …).
+
+---
+
+## Table of Contents
+- [Schema & Extension](#schema--extension)
+- [Tables](#tables)
+  - [1) market.exchange](#1-marketexchange)
+  - [2) market.instrument](#2-marketinstrument)
+  - [3) market.instrument_alias](#3-marketinstrument_alias)
+  - [4) market.universe](#4-marketuniverse)
+  - [5) market.universe_member](#5-marketuniverse_member)
+  - [6) View: market.v_universe_current](#6-view-marketv_universe_current)
+  - [7) market.price_daily (v002)](#7-marketprice_daily-v002)
+  - [8) market.feature_daily (v003)](#8-marketfeature_daily-v003)
+  - [9) market.news_item (v004)](#9-marketnews_item-v004)
+  - [10) market.news_link (v004)](#10-marketnews_link-v004)
+  - [11) market.sector (v005)](#11-marketsector-v005)
+  - [12) market.industry (v005)](#12-marketindustry-v005)
+  - [13) market.instrument_classification (v005)](#13-marketinstrument_classification-v005)
+  - [14) market.etf_holding (v005)](#14-marketetf_holding-v005)
+- [Seed Data](#seed-data-from-001_market_coresql)
+- [Common Queries](#common-queries)
+- [General Notes & Rationale](#general-notes--rationale)
 
 ---
 
