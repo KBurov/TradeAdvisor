@@ -177,7 +177,7 @@ Links news/social items to instruments.
 
 ### 11) `market.sector` (v005)
 
-Reference table for sectors.
+Tracks how instruments are classified into sector/industry over time.
 - **PK:** `sector_id`
 - **Unique:** `code`
 - **Fields:** `name`
