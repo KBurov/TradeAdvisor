@@ -174,6 +174,52 @@ Links news/social items to instruments.
 
 ---
 
+### 11) `market.sector` (v005)
+Reference table for sectors.
+- **PK:** `sector_id`
+- **Unique:** `code`
+- **Fields:** `name`
+
+---
+
+### 12) `market.industry` (v005)
+Reference table for industries (optionally linked to sector).
+- **PK:** `industry_id`
+- **Unique:** `code`
+- **FK:** `sector_id → market.sector(sector_id) [SET NULL]`
+- **Fields:** `name`
+
+---
+
+### 13) `market.instrument_classification` (v005)
+Temporal classification (SCD2-lite) of instruments into sector/industry.
+- **PK:** `(instrument_id, valid_from)`
+- **FKs:**  
+  - `instrument_id → market.instrument(instrument_id) [CASCADE]`  
+  - `sector_id → market.sector(sector_id) [SET NULL]`  
+  - `industry_id → market.industry(industry_id) [SET NULL]`
+- **Fields:** `valid_from DATE`, `valid_to DATE NULL` (NULL = current)
+- **Index:** `ix_instr_class_current` on `(instrument_id)` where `valid_to IS NULL`
+
+**Rationale**
+- Allows reclassification over time without losing history.
+- Joins cleanly with features/prices on the date dimension.
+
+---
+
+### 14) `market.etf_holding` (v005)
+ETF composition snapshots (constituents & weights) by `as_of_date`.
+- **PK:** `(etf_id, component_id, as_of_date)`
+- **FKs:** both `etf_id` and `component_id` → `market.instrument(instrument_id)` [CASCADE]
+- **Fields:** `weight NUMERIC(9,6)`, `shares NUMERIC(20,6)`, `market_value_usd NUMERIC(20,6)`, `source TEXT`
+- **Indexes:** `ix_etf_holding_asof` (as_of_date), `ix_etf_holding_component` (component_id)
+
+**Rationale**
+- Supports ETF-driven dependencies and sector/industry rollups.
+- Enables features like “ETF-weighted sentiment” or “component-weighted returns”.
+
+---
+
 ## Common Queries
 
 ### Current members of a universe
