@@ -117,6 +117,56 @@ Daily feature payloads per instrument. Supports multiple pipelines per day.
 
 ---
 
+### 9) `market.news_item` (v004)
+
+Unified table for **news articles** and **social posts**, partitioned **monthly** by `published_at`.
+
+- **PK:** `(published_at, news_id)`  ← composite key, required for partitioned table
+- **Partitioning:** `PARTITION BY RANGE (published_at)`; one child per month
+- **Columns:**
+  - `kind TEXT` — `'NEWS'` or `'SOCIAL'`
+  - `source TEXT` — provider (`REUTERS`, `BLOOMBERG`, `REDDIT`, `X`, `THREADS`, …)
+  - `external_id TEXT` — provider’s primary id (tweet id, reddit id, article id)
+  - `published_at TIMESTAMPTZ` — event time (UTC)
+  - `url TEXT`, `author TEXT`, `lang TEXT`
+  - `title TEXT`, `content TEXT`, `summary TEXT`
+  - `sentiment_label TEXT` (`NEG`/`NEU`/`POS`), `sentiment_score NUMERIC(6,5)`
+  - `topic_tags TEXT[]`
+  - `engagement JSONB` — counts (likes, retweets, upvotes, …)
+  - `raw JSONB` — original provider payload
+  - `tsv_en tsvector (generated)` — full-text search over title+content
+- **Indexes:**
+  - `ix_news_item_published_at` (btree)
+  - `ix_news_item_title_trgm` (GIN trigram for fuzzy title search)
+  - `ix_news_item_tsv_en` (GIN full-text)
+  - `ix_news_item_raw_gin` (GIN on raw JSONB)
+  - `ix_news_item_source_external` (btree)
+  - `ix_news_item_url` (btree)
+
+**Rationale**
+- A single table simplifies ingestion pipelines across providers.
+- Monthly partitions keep search fast and enable retention policies.
+- Both **trigram** and **full-text** indexes support different search styles (fuzzy vs. linguistic).
+
+---
+
+### 10) `market.news_link` (v004)
+
+Links news/social items to instruments.
+
+- **PK:** `(news_published_at, news_id, instrument_id)`
+- **FKs:**  
+  - `(news_published_at, news_id)` → `market.news_item(published_at, news_id)` (CASCADE)  
+  - `instrument_id` → `market.instrument(instrument_id)` (CASCADE)
+- **Columns:** `relevance REAL`, `method TEXT`
+- **Index:** `ix_news_link_instrument` for quick “what news affected this instrument?”
+
+**Rationale**
+- Separates content from entity linking; supports many-to-many with relevance scoring.
+- Multiple linking methods (NER, hashtag parsing, `$TICKER` rules) can co-exist.
+
+---
+
 ## Seed Data (from `001_market_core.sql`)
 - Exchanges: `NASDAQ (XNAS)`, `NYSE (XNYS)`
 - Instruments: `AAPL`, `MSFT` (EQUITY), `QQQ` (ETF) on NASDAQ
