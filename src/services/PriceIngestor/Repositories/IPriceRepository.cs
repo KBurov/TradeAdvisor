@@ -6,7 +6,7 @@ namespace PriceIngestor.Repositories;
 
 public interface IPriceRepository
 {
-    Task UpsertDailyBatchAsync(int instrumentId, IEnumerable<PriceRow> rows, string source, CancellationToken ct);
+    Task UpsertDailyBatchAsync(long instrumentId, IEnumerable<PriceRow> rows, string source, CancellationToken ct);
 }
 
 public sealed class PriceRepository : IPriceRepository
@@ -16,7 +16,7 @@ public sealed class PriceRepository : IPriceRepository
 
     private NpgsqlConnection Conn() => new(_connStr);
 
-    public async Task UpsertDailyBatchAsync(int instrumentId, IEnumerable<PriceRow> rows, string source, CancellationToken ct)
+    public async Task UpsertDailyBatchAsync(long instrumentId, IEnumerable<PriceRow> rows, string source, CancellationToken ct)
     {
         var list = rows as IList<PriceRow> ?? rows.ToList();
         if (list.Count == 0) return;
@@ -47,7 +47,7 @@ public sealed class PriceRepository : IPriceRepository
             var p = new
             {
                 InstrumentId = instrumentId,
-                TradeDate = r.TradeDate,
+                r.TradeDate,
                 r.Open,
                 r.High,
                 r.Low,

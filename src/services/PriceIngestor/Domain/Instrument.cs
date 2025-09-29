@@ -1,3 +1,3 @@
 namespace PriceIngestor.Domain;
 
-public sealed record Instrument(int InstrumentId, string Symbol);
+public sealed record Instrument(long InstrumentId, string Symbol);
