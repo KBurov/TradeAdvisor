@@ -1,0 +1,26 @@
+symbol,exchange_code,name,type
+AAPL,NASDAQ,Apple Inc.,EQUITY
+AMD,NASDAQ,Advanced Micro Devices Inc.,EQUITY
+AVGO,NASDAQ,Broadcom Inc.,EQUITY
+ASML,NASDAQ,ASML Holding NV,EQUITY
+DELL,NYSE,Dell Technologies Inc.,EQUITY
+GOOGL,NASDAQ,Alphabet Inc. Class A,EQUITY
+HD,NYSE,Home Depot Inc.,EQUITY
+HPE,NYSE,Hewlett Packard Enterprise Co.,EQUITY
+KO,NYSE,Coca-Cola Co.,EQUITY
+LLY,NYSE,Eli Lilly & Co.,EQUITY
+MCD,NYSE,McDonald's Corp.,EQUITY
+META,NASDAQ,Meta Platforms Inc.,EQUITY
+MSFT,NASDAQ,Microsoft Corp.,EQUITY
+NVDA,NASDAQ,NVIDIA Corp.,EQUITY
+NVO,NYSE,Novo Nordisk A/S (ADR),EQUITY
+ORCL,NYSE,Oracle Corp.,EQUITY
+PEP,NASDAQ,PepsiCo Inc.,EQUITY
+PYPL,NASDAQ,PayPal Holdings Inc.,EQUITY
+SOFI,NASDAQ,SoFi Technologies Inc.,EQUITY
+TSM,NYSE,Taiwan Semiconductor Mfg. Co. (ADR),EQUITY
+UBER,NYSE,Uber Technologies Inc.,EQUITY
+QQQ,NASDAQ,Invesco QQQ Trust,ETF
+VGT,NYSE,Vanguard Information Technology ETF,ETF
+VOO,NYSE,Vanguard S&P 500 ETF,ETF
+VTI,NYSE,Vanguard Total Stock Market ETF,ETF

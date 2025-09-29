@@ -730,7 +730,10 @@ FodyWeavers.xsd
 .venv/
 
 # Local persistent data
-/data/
+data/*
+!data/reference/
+!data/reference/*.csv
+!data/reference/README.md
 # Local env & venv
 .env.local
 .venv/
