@@ -331,8 +331,11 @@ You should see the JSON echoed by the consumer.
   docker compose --env-file ../../.env.local up -d
   ```
 - Never commit `.env.local` to GitHub — it’s already ignored via `.gitignore`.
-  Similarly, `.venv/` (Python virtual environment) and `data/` (service volumes for MinIO, MLflow, Kafka)
-  are also ignored to avoid polluting the repo.
+- Similarly, `.venv/` (Python virtual environment) and `data/` (service volumes for MinIO, MLflow, Kafka)
+  are ignored to avoid polluting the repo.
+- **Exception:** `data/reference/` is version-controlled.  
+  It contains seed/reference datasets (e.g., CSVs for instruments, sectors, industries).  
+  This folder is committed to Git to ensure migrations and seed scripts have reproducible inputs.
 
 ---
 
