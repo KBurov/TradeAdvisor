@@ -20,7 +20,7 @@ public sealed class InstrumentRepository : IInstrumentRepository
     public async Task<IReadOnlyList<Instrument>> GetByUniverseAsync(string universeCode, CancellationToken ct)
     {
         const string sql = """
-        SELECT i.instrument_id AS InstrumentId, i.symbol AS Symbol
+        SELECT i.instrument_id AS instrumentId, i.symbol AS symbol
         FROM market.v_universe_current c
         JOIN market.instrument i USING (instrument_id)
         WHERE c.universe_code = @code
