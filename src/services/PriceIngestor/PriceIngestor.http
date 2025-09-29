@@ -1,0 +1,6 @@
+@PriceIngestor_HostAddress = http://localhost:5207
+
+GET {{PriceIngestor_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

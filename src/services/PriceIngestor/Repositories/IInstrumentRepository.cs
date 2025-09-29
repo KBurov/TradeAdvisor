@@ -1,0 +1,41 @@
+using Dapper;
+using Npgsql;
+using PriceIngestor.Domain;
+
+namespace PriceIngestor.Repositories;
+
+public interface IInstrumentRepository
+{
+    Task<IReadOnlyList<Instrument>> GetByUniverseAsync(string universeCode, CancellationToken ct);
+    Task<string?> TryGetCoreIfExistsAsync(CancellationToken ct); // DB default helper
+}
+
+public sealed class InstrumentRepository : IInstrumentRepository
+{
+    private readonly string _connStr;
+    public InstrumentRepository(IConfiguration cfg) => _connStr = cfg.GetConnectionString("Postgres")!;
+
+    private NpgsqlConnection Conn() => new(_connStr);
+
+    public async Task<IReadOnlyList<Instrument>> GetByUniverseAsync(string universeCode, CancellationToken ct)
+    {
+        const string sql = """
+        SELECT i.instrument_id AS InstrumentId, i.symbol AS Symbol
+        FROM market.v_universe_current c
+        JOIN market.instrument i USING (instrument_id)
+        WHERE c.universe_code = @code
+        ORDER BY i.symbol;
+        """;
+        await using var cn = Conn();
+        var rows = await cn.QueryAsync<Instrument>(new CommandDefinition(sql, new { code = universeCode }, cancellationToken: ct));
+        return rows.AsList();
+    }
+
+    public async Task<string?> TryGetCoreIfExistsAsync(CancellationToken ct)
+    {
+        // If a 'core' universe exists, use it as DB-side default
+        const string sql = "SELECT code FROM market.universe WHERE code = 'core' LIMIT 1;";
+        await using var cn = Conn();
+        return await cn.ExecuteScalarAsync<string?>(new CommandDefinition(sql, cancellationToken: ct));
+    }
+}

@@ -115,5 +115,22 @@ services:
     ports:
       - "${KAFKA_UI_PORT}:8080"
 
+  price-ingestor:
+    build:
+      context: ../..   # repo root
+      dockerfile: src/services/PriceIngestor/Dockerfile
+    container_name: tradeadvisor-price-ingestor
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Development"
+      ConnectionStrings__Postgres: "Host=postgres;Database=trade;Username=trade;Password=trade"
+      Ingest__UniverseCode: "core"
+      Ingest__SourceTag: "yahoo"
+    depends_on:
+      - postgres
+    ports:
+      - "8088:8080"
+    networks:
+      - default
+
 volumes:
   pgdata: {}
