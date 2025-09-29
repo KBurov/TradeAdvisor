@@ -288,6 +288,18 @@ WHERE a.source = 'YAHOO' AND a.value = 'AAPL';
 
 ---
 
+## Reference Data (Git-tracked)
+
+Unlike other subfolders under `data/` that are ignored, **`data/reference/` is version-controlled**.
+It contains small, deterministic seed datasets used by SQL seed scripts in `infra/sql/seed/`.
+
+- Example: `data/reference/tickers_core.csv` — input for `infra/sql/seed/seed_instruments_from_csv.sql`
+  (upserts exchanges & instruments and links them to the `core` universe).
+- Keep files here **small and text-based** (CSV/JSON/YAML). Do **not** place runtime data in this folder.
+- When adding new reference files, update the corresponding seed SQL in `infra/sql/seed/` to read them.
+
+---
+
 ## General Notes & Rationale
 
 - Use the **stable** `instrument_id` everywhere (prices, features, forecasts) to avoid identity issues on symbol changes.
