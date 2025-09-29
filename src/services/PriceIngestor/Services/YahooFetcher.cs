@@ -24,20 +24,40 @@ public sealed class YahooFetcher : IBarFetcher
             var s = new DateTime(start.Year, start.Month, start.Day, 0, 0, 0, DateTimeKind.Utc);
             var e = new DateTime(end.Year, end.Month, end.Day, 23, 59, 59, DateTimeKind.Utc);
 
-            // YahooFinanceApi is synchronous per request; wrap with Task.Run to honor ct minimally
             var candles = await Task.Run(() => Yahoo.GetHistoricalAsync(symbol, s, e, Period.Daily), ct);
 
             var list = candles
                 .OrderBy(c => c.DateTime)
-                .Select(c => new PriceRow(
-                    DateOnly.FromDateTime(c.DateTime.Date),
-                    (decimal)c.Open,
-                    (decimal)c.High,
-                    (decimal)c.Low,
-                    (decimal)c.Close,
-                    (decimal)c.AdjustedClose,
-                    (long)c.Volume
-                ))
+                .Select(c =>
+                {
+                    // Avoid null-coalescing on non-nullable decimals.
+                    // Some lib versions expose AdjustedClose as decimal?; others as decimal.
+                    // Treat "missing" adjusted close as equal to close.
+                    decimal adjClose;
+                    try
+                    {
+                        // If AdjustedClose is nullable:
+                        // (dynamic) to avoid compile-time ambiguity across lib versions.
+                        dynamic dc = c;
+                        var maybeAdj = dc.AdjustedClose;
+                        adjClose = maybeAdj is null ? dc.Close : (decimal)maybeAdj;
+                    }
+                    catch
+                    {
+                        // If property not present / different type, fallback safely
+                        adjClose = c.Close;
+                    }
+
+                    return new PriceRow(
+                        DateOnly.FromDateTime(c.DateTime.Date),
+                        c.Open,
+                        c.High,
+                        c.Low,
+                        c.Close,
+                        adjClose,
+                        (long)c.Volume
+                    );
+                })
                 .ToList();
 
             return (IReadOnlyList<PriceRow>)list;
