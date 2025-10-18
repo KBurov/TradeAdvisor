@@ -166,11 +166,38 @@ docker compose up -d
 
 ### Accessing services
 
-- **Postgres Adminer** → http://localhost:8085
-  (login / password: `trade` / `trade`, DB: `trade`)
 - **MinIO Console** → http://localhost:9001
   (login / password: `minio` / `minio123`)
 - **MLflow UI** → http://localhost:5001
+
+## 11A) Database (PostgreSQL)
+
+PostgreSQL is included in the Docker Compose stack and managed automatically with Adminer as a web interface.
+
+- **Postgres Adminer** → http://localhost:8085
+  (login / password: `trade` / `trade`, DB: `trade`)
+
+To initialize or update the database the database schema, use the migration script:
+
+```bash
+cd infra
+./migrate.sh
+```
+
+This script:
+- Reads Postgres connection parameters from `infra/compose/.env` (preferred) or `.env.local`.
+- Creates a tracking table `public.schema_version` (if missing).
+- Applies each SQL file in order (e.g. `001_*.sql`, `002_*.sql`, …).
+- Skips files that are already recorded as applied.
+
+To verify the applied migrations:
+
+```bash
+PGPASSWORD=trade psql -h 127.0.0.1 -U trade -d trade -c \
+  "SELECT version, filename, applied_at FROM public.schema_version ORDER BY version;"
+```
+
+See **docs/schema.md → Applying Database Migrations** for detailed information.
 
 ## 12) Persistence for MinIO & MLflow
 
