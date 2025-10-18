@@ -7,6 +7,7 @@ It will be updated with each new migration (`007_*`, `008_*`, …).
 
 ## Table of Contents
 - [Schema & Extension](#schema--extension)
+- [Applying Database Migrations](#applying-database-migrations)
 - [Tables](#tables)
   - [1) market.exchange](#1-marketexchange-v001)
   - [2) market.instrument](#2-marketinstrument-v001)
@@ -36,6 +37,34 @@ It will be updated with each new migration (`007_*`, `008_*`, …).
 
 - **Schema:** `market`
 - **Extension:** `pg_trgm` (for fuzzy text search on instrument names)
+
+---
+
+## Applying Database Migrations
+
+All migration scripts are located in `infra/sql/` and are executed in numeric order by `infra/migrate.sh`.
+
+To apply all pending migrations:
+
+```bash
+cd infra
+./migrate.sh
+```
+
+This script:
+- Reads Postgres connection parameters from `infra/compose/.env` (preferred) or `.env.local`.
+- Creates a tracking table `public.schema_version` (if missing).
+- Applies each SQL file in order (e.g. `001_*.sql`, `002_*.sql`, …).
+- Skips files that are already recorded as applied.
+
+To verify the applied migrations:
+
+```bash
+PGPASSWORD=trade psql -h 127.0.0.1 -U trade -d trade -c \
+  "SELECT version, filename, applied_at FROM public.schema_version ORDER BY version;"
+```
+
+> Tip: Always create a new migration file (e.g. `007_add_new_table.sql`) instead of editing previously applied scripts.
 
 ---
 
