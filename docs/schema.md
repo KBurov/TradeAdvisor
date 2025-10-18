@@ -22,6 +22,10 @@ It will be updated with each new migration (`003_*`, `004_*`, …).
   - [12) market.industry (v005)](#12-marketindustry-v005)
   - [13) market.instrument_classification (v005)](#13-marketinstrument_classification-v005)
   - [14) market.etf_holding (v005)](#14-marketetf_holding-v005)
+  - [15) market.data_provider (v006)](#15-marketdata_provider-v006)
+  - [16) market.exchange_provider_code (v006)](#16-marketexchange_provider_code-v006)
+  - [17) market.instrument_provider_symbol (v006)](#17-marketinstrument_provider_symbol-v006)
+  - [18) Function: market.f_build_eodhd_symbol (v006)](#18-function-marketf_build_eodhd_symbol-v006)
 - [Seed Data](#seed-data-from-001_market_coresql)
 - [Common Queries](#common-queries)
 - [General Notes & Rationale](#general-notes--rationale)
@@ -245,6 +249,102 @@ ETF composition snapshots (constituents & weights) by `as_of_date`.
 **Rationale**
 - Supports ETF-driven dependencies and sector/industry rollups.
 - Enables features like “ETF-weighted sentiment” or “component-weighted returns”.
+
+---
+
+### 15) `market.data_provider` (v006)
+
+Registry of external data providers (EODHD, Tiingo, etc.).
+
+- **PK:** `provider_id`
+- **Unique:** `code`
+- **Fields:**  
+  - `name` — human-readable provider name  
+  - `base_url` — optional base API URL  
+  - `notes` — free-form description  
+- **Seed:**  
+  - `EODHD` — EOD Historical Data  
+  - `TIINGO` — Tiingo  
+
+**Rationale**  
+Defines a stable reference table so that all provider-specific mappings (symbols, suffixes, credentials) can reference a canonical provider ID.
+
+---
+
+### 16) `market.exchange_provider_code` (v006)
+
+Maps each **exchange** to provider-specific suffixes or codes.
+
+- **PK:** `(exchange_id, provider_id)`
+- **FKs:**  
+  - `exchange_id → market.exchange(exchange_id)` **[CASCADE]**  
+  - `provider_id → market.data_provider(provider_id)` **[CASCADE]**
+- **Fields:**  
+  - `symbol_suffix` — e.g. `'US'`, `'L'`, `'TO'`, `'DE'`  
+  - `provider_exchange_code` — optional code used by provider  
+  - `is_default BOOLEAN` — marks the main mapping per provider  
+  - `notes`, `updated_at`
+- **Seed examples:**  
+  - NASDAQ → `.US` (EODHD)  
+  - NYSE → `.US` (EODHD)
+
+**Rationale**  
+EODHD and similar APIs derive ticker format from the **exchange suffix** (`AAPL.US`, `TSLA.US`, etc.).  
+This table keeps that logic data-driven instead of hardcoded.
+
+---
+
+### 17) `market.instrument_provider_symbol` (v006)
+
+Optional **per-instrument override** of provider symbol.
+
+- **PK:** `(instrument_id, provider_id)`
+- **FKs:**  
+  - `instrument_id → market.instrument(instrument_id)` **[CASCADE]**  
+  - `provider_id → market.data_provider(provider_id)` **[CASCADE]**
+- **Fields:**  
+  - `provider_symbol TEXT` — the exact symbol expected by provider  
+  - `updated_at`
+- **Index:** `ix_instr_provider_symbol_symbol` on `provider_symbol`
+
+**Rationale**  
+Covers exceptions where a provider uses a non-standard ticker format  
+(e.g., `BRK-B.US` instead of `BRK.B.US`).
+
+---
+
+### 18) Function: `market.f_build_eodhd_symbol` (v006)
+
+Helper SQL function that constructs the correct EODHD symbol.
+
+- **Signature:**  
+  ```sql
+  market.f_build_eodhd_symbol(p_instrument_id BIGINT) RETURNS TEXT
+  ```
+- **Logic:**
+  1. If an explicit override exists in `market.instrument_provider_symbol` → return it.  
+  2. Otherwise, combine the base symbol from `market.instrument` with `.` and the suffix from  
+     `market.exchange_provider_code.symbol_suffix` (e.g., `AAPL` + `.US` → `AAPL.US`).  
+  3. If neither mapping exists, return the plain symbol.
+
+- **Example:**
+
+  ```sql
+  SELECT i.symbol,
+         market.f_build_eodhd_symbol(i.instrument_id) AS eodhd_symbol
+  FROM market.instrument i
+  WHERE i.symbol IN ('AAPL','MSFT','QQQ');
+  ```
+
+  | symbol | eodhd_symbol |
+  |--------|--------------|
+  | AAPL   | AAPL.US      |
+  | MSFT   | MSFT.US      |
+  | QQQ    | QQQ.US       |
+
+- **Rationale:**  
+  Centralizes provider symbol construction in SQL, avoiding hard-coded suffix logic in services  
+  and simplifying future provider support.
 
 ---
 
