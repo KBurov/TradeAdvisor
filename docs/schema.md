@@ -1,7 +1,7 @@
 # Database Schema
 
-This document describes the **implemented** PostgreSQL schema as of migration `005_classification_etf.sql`.  
-It will be updated with each new migration (`003_*`, `004_*`, …).
+This document describes the **implemented** PostgreSQL schema as of migration `006_exchange_eodhd_suffix.sql`.  
+It will be updated with each new migration (`007_*`, `008_*`, …).
 
 ---
 
