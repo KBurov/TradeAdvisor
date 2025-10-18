@@ -8,12 +8,12 @@ It will be updated with each new migration (`003_*`, `004_*`, …).
 ## Table of Contents
 - [Schema & Extension](#schema--extension)
 - [Tables](#tables)
-  - [1) market.exchange](#1-marketexchange)
-  - [2) market.instrument](#2-marketinstrument)
-  - [3) market.instrument_alias](#3-marketinstrument_alias)
-  - [4) market.universe](#4-marketuniverse)
-  - [5) market.universe_member](#5-marketuniverse_member)
-  - [6) View: market.v_universe_current](#6-view-marketv_universe_current)
+  - [1) market.exchange](#1-marketexchange-v001)
+  - [2) market.instrument](#2-marketinstrument-v001)
+  - [3) market.instrument_alias](#3-marketinstrument_alias-v001)
+  - [4) market.universe](#4-marketuniverse-v001)
+  - [5) market.universe_member](#5-marketuniverse_member-v001)
+  - [6) View: market.v_universe_current](#6-view-marketv_universe_current-v001)
   - [7) market.price_daily (v002)](#7-marketprice_daily-v002)
   - [8) market.feature_daily (v003)](#8-marketfeature_daily-v003)
   - [9) market.news_item (v004)](#9-marketnews_item-v004)
@@ -37,7 +37,7 @@ It will be updated with each new migration (`003_*`, `004_*`, …).
 
 ## Tables
 
-### 1) `market.exchange` (001)
+### 1) `market.exchange` (v001)
 
 Reference list of trading venues.
 - **PK:** `exchange_id SERIAL`
@@ -47,7 +47,7 @@ Reference list of trading venues.
 
 ---
 
-### 2) `market.instrument` (001)
+### 2) `market.instrument` (v001)
 
 Canonical instruments (stocks, ETFs, etc.) with a stable ID.
 - **PK:** `instrument_id BIGSERIAL`
@@ -59,7 +59,7 @@ Canonical instruments (stocks, ETFs, etc.) with a stable ID.
 
 ---
 
-### 3) `market.instrument_alias` (001)
+### 3) `market.instrument_alias` (v001)
 
 Alternate identifiers and historical symbols.
 - **PK:** `alias_id BIGSERIAL`
@@ -70,7 +70,7 @@ Alternate identifiers and historical symbols.
 
 ---
 
-### 4) `market.universe` (001)
+### 4) `market.universe` (v001)
 
 Named selection sets (watchlists / processing scopes).
 - **PK:** `universe_id SERIAL`
@@ -80,7 +80,7 @@ Named selection sets (watchlists / processing scopes).
 
 ---
 
-### 5) `market.universe_member` (001)
+### 5) `market.universe_member` (v001)
 
 Temporal membership of instruments in universes.
 - **PK:** `(universe_id, instrument_id)`
@@ -92,7 +92,7 @@ Temporal membership of instruments in universes.
 
 ---
 
-### 6) View: `market.v_universe_current` (001)
+### 6) View: `market.v_universe_current` (v001)
 
 Convenience view of **current** (active) universe memberships.
 - **Columns:** `universe_code`, `universe_id`, `instrument_id`
