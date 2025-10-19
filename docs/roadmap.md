@@ -102,3 +102,5 @@ In progress:
 - Each milestone produces working, incremental deliverables.
 - ADRs will be updated if major changes occur.
 - Roadmap will be refined continuously.
+- **Next:** complete Tiingo + EODHD integration in the Price Ingestor service,  
+  then proceed with the feature computation and validation modules.
