@@ -384,7 +384,7 @@ Helper SQL function that constructs the correct EODHD symbol.
 - Instruments: `AAPL`, `MSFT` (EQUITY), `QQQ` (ETF) on NASDAQ
 - Universe: `core` with `AAPL`, `MSFT`, `QQQ` as active members
 
-  ---
+---
 
 ## Seeding: Global Exchanges — EODHD Suffixes (v007)
 
@@ -397,7 +397,7 @@ into `market.exchange_provider_code`.
 
 **Mappings inserted/updated (`is_default = true`):**
 
-| Exchange Code | MIC   | Exchange Name                          | Country | Suffix (no dot) |
+| Exchange Code | MIC   | Exchange Name                           | Country | Suffix (no dot) |
 |---------------|-------|-----------------------------------------|---------|-----------------|
 | LSE           | XLON  | London Stock Exchange                   | GB      | L               |
 | TSX           | XTSE  | Toronto Stock Exchange                  | CA      | TO              |
