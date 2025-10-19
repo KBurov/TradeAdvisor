@@ -18,14 +18,11 @@ This roadmap outlines major milestones for the first 90 days of the project.
 ---
 
 ## Phase 2 — Infrastructure Skeleton (Weeks 4–6)
-- ✅ Postgres + Adminer running locally via Docker Compose.
-- ✅ MinIO + MLflow stack running with persistence (bind mounts, SQLite DB).
-
-In progress:
-- Add Kafka (or Redis Streams for dev)
-- Define DB schema (prices, news, features, models, metrics, forecasts)
-- Add healthcheck REST API stubs (FastAPI + ASP.NET Core)
-- Add basic CI pipeline (lint, build, test)
+✅ Completed:
+- Postgres + Adminer running locally via Docker Compose.
+- MinIO + MLflow stack running with persistence (bind mounts, SQLite DB).
+- Kafka (KRaft mode) with UI added and verified.
+- Automated DB migration script `infra/migrate.sh` implemented.
 
 **Deliverables:**
 - `docker-compose.yml`
@@ -35,15 +32,20 @@ In progress:
 ---
 
 ## Phase 3 — Data & Features (Weeks 7–9)
-- Implement services to collect historical & live price data.
-- Integrate news/social ingestion (rate limiting, retries).
-- Add feature computation module (technical indicators, rolling stats).
-- Store features in Postgres with partitioning + JSONB.
+✅ Completed:
+- Defined and documented full DB schema (migrations 001–007).
+- Added provider-related tables (`market.data_provider`, `exchange_provider_code`, etc.).
+- Introduced helper SQL function `f_build_eodhd_symbol()` for dynamic ticker construction.
+- Added EODHD and Tiingo integration design (ADR-0007).
+
+In progress:
+- Price Ingestor service migration from Yahoo Finance API.
+- Implement logic to use Tiingo for initial fill and EODHD for batch updates.
 
 **Deliverables:**
-- Ingest services in Python + .NET
-- Feature store in DB
-- Tests for data validation
+- Verified schema (`schema.md` updated to v007)
+- Multi-provider ready database
+- Initial price ingestion logic
 
 ---
 
