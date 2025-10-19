@@ -1,7 +1,7 @@
 # Database Schema
 
-This document describes the **implemented** PostgreSQL schema as of migration `006_exchange_eodhd_suffix.sql`.  
-It will be updated with each new migration (`007_*`, `008_*`, …).
+This document describes the **implemented** PostgreSQL schema as of migration `007_exchanges_global_eodhd.sql`.  
+It will be updated with each new migration (`008_*`, `009_*`, …).
 
 ---
 
@@ -27,6 +27,7 @@ It will be updated with each new migration (`007_*`, `008_*`, …).
   - [16) market.exchange_provider_code (v006)](#16-marketexchange_provider_code-v006)
   - [17) market.instrument_provider_symbol (v006)](#17-marketinstrument_provider_symbol-v006)
   - [18) Function: market.f_build_eodhd_symbol (v006)](#18-function-marketf_build_eodhd_symbol-v006)
+  - [Seeding: Global Exchanges — EODHD Suffixes (v007)](#seeding-global-exchanges--eodhd-suffixes-v007)
 - [Seed Data](#seed-data-from-001_market_coresql)
 - [Common Queries](#common-queries)
 - [General Notes & Rationale](#general-notes--rationale)
@@ -233,7 +234,7 @@ Links news/social items to instruments.
 
 ### 11) `market.sector` (v005)
 
-Tracks how instruments are classified into sector/industry over time.
+Reference table for sectors.
 - **PK:** `sector_id`
 - **Unique:** `code`
 - **Fields:** `name`
@@ -314,8 +315,8 @@ Maps each **exchange** to provider-specific suffixes or codes.
   - `is_default BOOLEAN` — marks the main mapping per provider  
   - `notes`, `updated_at`
 - **Seed examples:**  
-  - NASDAQ → `.US` (EODHD)  
-  - NYSE → `.US` (EODHD)
+  - NASDAQ → `US` (EODHD)  
+  - NYSE → `US` (EODHD)
 
 **Rationale**  
 EODHD and similar APIs derive ticker format from the **exchange suffix** (`AAPL.US`, `TSLA.US`, etc.).  
@@ -374,6 +375,57 @@ Helper SQL function that constructs the correct EODHD symbol.
 - **Rationale:**  
   Centralizes provider symbol construction in SQL, avoiding hard-coded suffix logic in services  
   and simplifying future provider support.
+
+  ---
+
+## Seeding: Global Exchanges — EODHD Suffixes (v007)
+
+This migration seeds additional non-US exchanges and wires their **EODHD** symbol suffixes
+into `market.exchange_provider_code`.
+
+> **Important:** suffixes are stored **without the leading dot** (e.g., `US`, `L`, `TO`).  
+> The final request symbol (e.g., `AAPL.US`) is produced by  
+> `market.f_build_eodhd_symbol(instrument_id)` from **v006**.
+
+**Mappings inserted/updated (`is_default = true`):**
+
+| Exchange Code | MIC   | Exchange Name                          | Country | Suffix (no dot) |
+|---------------|-------|-----------------------------------------|---------|-----------------|
+| LSE           | XLON  | London Stock Exchange                   | GB      | L               |
+| TSX           | XTSE  | Toronto Stock Exchange                  | CA      | TO              |
+| TSXV          | XTSX  | TSX Venture Exchange                    | CA      | V               |
+| XETRA         | XETR  | Deutsche Börse XETRA                    | DE      | DE              |
+| SIX           | XSWX  | SIX Swiss Exchange                      | CH      | SW              |
+| ENPAR         | XPAR  | Euronext Paris                          | FR      | PA              |
+| ENAMS         | XAMS  | Euronext Amsterdam                      | NL      | AS              |
+| ENBRU         | XBRU  | Euronext Brussels                       | BE      | BR              |
+| ENLIS         | XLIS  | Euronext Lisbon                         | PT      | LS              |
+| ENMIL         | XMIL  | Euronext Milan (Borsa Italiana)         | IT      | MI              |
+| TSE           | XTKS  | Tokyo Stock Exchange                    | JP      | T               |
+| HKEX          | XHKG  | Hong Kong Exchanges                     | HK      | HK              |
+| ASX           | XASX  | Australian Securities Exchange          | AU      | AU              |
+
+**Verify:**
+
+```sql
+SELECT e.code, e.mic, ep.symbol_suffix
+FROM market.exchange e
+JOIN market.exchange_provider_code ep ON ep.exchange_id = e.exchange_id
+JOIN market.data_provider p ON p.provider_id = ep.provider_id
+WHERE p.code = 'EODHD'
+ORDER BY e.code;
+```
+
+Notes:
+- These mappings are provider-specific to EODHD.
+  Other providers can have their own rows in `market.exchange_provider_code`.
+- To build API-ready symbols like `AAPL.US` or `BHP.AU`, call:
+
+  ```sql
+  SELECT market.f_build_eodhd_symbol(i.instrument_id)
+  FROM market.instrument i
+  WHERE i.symbol IN ('AAPL','BHP');
+  ```
 
 ---
 
