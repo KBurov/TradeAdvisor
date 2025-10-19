@@ -27,8 +27,8 @@ It will be updated with each new migration (`008_*`, `009_*`, …).
   - [16) market.exchange_provider_code (v006)](#16-marketexchange_provider_code-v006)
   - [17) market.instrument_provider_symbol (v006)](#17-marketinstrument_provider_symbol-v006)
   - [18) Function: market.f_build_eodhd_symbol (v006)](#18-function-marketf_build_eodhd_symbol-v006)
-  - [Seeding: Global Exchanges — EODHD Suffixes (v007)](#seeding-global-exchanges--eodhd-suffixes-v007)
 - [Seed Data](#seed-data-from-001_market_coresql)
+- [Seeding: Global Exchanges — EODHD Suffixes (v007)](#seeding-global-exchanges--eodhd-suffixes-v007)
 - [Common Queries](#common-queries)
 - [General Notes & Rationale](#general-notes--rationale)
 
@@ -376,6 +376,14 @@ Helper SQL function that constructs the correct EODHD symbol.
   Centralizes provider symbol construction in SQL, avoiding hard-coded suffix logic in services  
   and simplifying future provider support.
 
+---
+
+## Seed Data (from `001_market_core.sql`)
+
+- Exchanges: `NASDAQ (XNAS)`, `NYSE (XNYS)`
+- Instruments: `AAPL`, `MSFT` (EQUITY), `QQQ` (ETF) on NASDAQ
+- Universe: `core` with `AAPL`, `MSFT`, `QQQ` as active members
+
   ---
 
 ## Seeding: Global Exchanges — EODHD Suffixes (v007)
@@ -426,14 +434,6 @@ Notes:
   FROM market.instrument i
   WHERE i.symbol IN ('AAPL','BHP');
   ```
-
----
-
-## Seed Data (from `001_market_core.sql`)
-
-- Exchanges: `NASDAQ (XNAS)`, `NYSE (XNYS)`
-- Instruments: `AAPL`, `MSFT` (EQUITY), `QQQ` (ETF) on NASDAQ
-- Universe: `core` with `AAPL`, `MSFT`, `QQQ` as active members
 
 ---
 
