@@ -29,6 +29,7 @@ It will be updated with each new migration (`008_*`, `009_*`, …).
   - [18) Function: market.f_build_eodhd_symbol (v006)](#18-function-marketf_build_eodhd_symbol-v006)
 - [Seed Data](#seed-data-from-001_market_coresql)
 - [Seeding: Global Exchanges — EODHD Suffixes (v007)](#seeding-global-exchanges--eodhd-suffixes-v007)
+- [Data Provider Update: Tiingo Base URL (v008)](#data-provider-update-tiingo-base-url-v008)
 - [Common Queries](#common-queries)
 - [General Notes & Rationale](#general-notes--rationale)
 
@@ -424,7 +425,7 @@ WHERE p.code = 'EODHD'
 ORDER BY e.code;
 ```
 
-Notes:
+**Notes:**
 - These mappings are provider-specific to EODHD.
   Other providers can have their own rows in `market.exchange_provider_code`.
 - To build API-ready symbols like `AAPL.US` or `BHP.AU`, call:
@@ -434,6 +435,34 @@ Notes:
   FROM market.instrument i
   WHERE i.symbol IN ('AAPL','BHP');
   ```
+
+---
+
+## Data Provider Update: Tiingo Base URL (v008)
+
+This migration ensures that the **Tiingo** provider entry in  
+`market.data_provider` has the correct canonical REST endpoint URL.
+
+**SQL:**
+
+```sql
+INSERT INTO market.data_provider (code, name, base_url, notes)
+VALUES
+  ('TIINGO', 'Tiingo', 'https://api.tiingo.com', 'REST base URL for Tiingo (EOD & intraday).')
+ON CONFLICT (code) DO UPDATE
+SET base_url = EXCLUDED.base_url;
+```
+
+**Result:**
+
+| code   | name   | base_url                                         | notes                                     |
+| ------ | ------ | ------------------------------------------------ | ----------------------------------------- |
+| TIINGO | Tiingo | [https://api.tiingo.com](https://api.tiingo.com) | REST base URL for Tiingo (EOD & intraday) |
+
+**Rationale:**
+- Keeps provider connection data centralized in SQL, not code.
+- Enables ingestion services to build URLs dynamically from the database.
+- Keeps the migration idempotent — re-running it is safe.
 
 ---
 
