@@ -9,10 +9,8 @@ public interface IInstrumentRepository
     Task<string?> TryGetCoreIfExistsAsync(CancellationToken ct); // DB default helper
 }
 
-public sealed class InstrumentRepository : DataRepository, IInstrumentRepository
+public sealed class InstrumentRepository(IConfiguration cfg) : DataRepository(cfg), IInstrumentRepository
 {
-    public InstrumentRepository(IConfiguration cfg) : base(cfg) {}
-
     public async Task<IReadOnlyList<Instrument>> GetByUniverseAsync(string universeCode, CancellationToken ct)
     {
         const string sql = """
@@ -22,8 +20,10 @@ public sealed class InstrumentRepository : DataRepository, IInstrumentRepository
         WHERE c.universe_code = @code
         ORDER BY i.symbol;
         """;
+
         await using var cn = Conn();
         var rows = await cn.QueryAsync<Instrument>(new CommandDefinition(sql, new { code = universeCode }, cancellationToken: ct));
+
         return rows.AsList();
     }
 
@@ -31,7 +31,9 @@ public sealed class InstrumentRepository : DataRepository, IInstrumentRepository
     {
         // If a 'core' universe exists, use it as DB-side default
         const string sql = "SELECT code FROM market.universe WHERE code = 'core' LIMIT 1;";
+
         await using var cn = Conn();
+
         return await cn.ExecuteScalarAsync<string?>(new CommandDefinition(sql, cancellationToken: ct));
     }
 }

@@ -1,10 +1,10 @@
 using Npgsql;
 
-public abstract class DataRepository
+namespace PriceIngestor.Repositories;
+
+public abstract class DataRepository(IConfiguration cfg)
 {
-    private readonly string _connStr;
+    private readonly string _connStr = cfg.GetConnectionString("Postgres")!;
 
     protected NpgsqlConnection Conn() => new(_connStr);
-
-    protected DataRepository(IConfiguration cfg) => _connStr = cfg.GetConnectionString("Postgres")!;
 }
