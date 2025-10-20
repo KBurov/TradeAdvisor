@@ -1,5 +1,4 @@
 using Dapper;
-using Npgsql;
 using PriceIngestor.Domain;
 
 namespace PriceIngestor.Repositories;
@@ -9,12 +8,9 @@ public interface IPriceRepository
     Task UpsertDailyBatchAsync(long instrumentId, IEnumerable<PriceRow> rows, string source, CancellationToken ct);
 }
 
-public sealed class PriceRepository : IPriceRepository
+public sealed class PriceRepository : DataRepository, IPriceRepository
 {
-    private readonly string _connStr;
-    public PriceRepository(IConfiguration cfg) => _connStr = cfg.GetConnectionString("Postgres")!;
-
-    private NpgsqlConnection Conn() => new(_connStr);
+    public PriceRepository(IConfiguration cfg) : base(cfg) {}
 
     public async Task UpsertDailyBatchAsync(long instrumentId, IEnumerable<PriceRow> rows, string source, CancellationToken ct)
     {

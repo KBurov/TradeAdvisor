@@ -1,5 +1,4 @@
 using Dapper;
-using Npgsql;
 using PriceIngestor.Domain;
 
 namespace PriceIngestor.Repositories;
@@ -10,12 +9,9 @@ public interface IInstrumentRepository
     Task<string?> TryGetCoreIfExistsAsync(CancellationToken ct); // DB default helper
 }
 
-public sealed class InstrumentRepository : IInstrumentRepository
+public sealed class InstrumentRepository : DataRepository, IInstrumentRepository
 {
-    private readonly string _connStr;
-    public InstrumentRepository(IConfiguration cfg) => _connStr = cfg.GetConnectionString("Postgres")!;
-
-    private NpgsqlConnection Conn() => new(_connStr);
+    public InstrumentRepository(IConfiguration cfg) : base(cfg) {}
 
     public async Task<IReadOnlyList<Instrument>> GetByUniverseAsync(string universeCode, CancellationToken ct)
     {
