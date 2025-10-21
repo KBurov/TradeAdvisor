@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using PriceIngestor.Domain;
+using Microsoft.Extensions.Caching.Memory;
 using PriceIngestor.Repositories;
 using PriceIngestor.Services;
 using Serilog;
@@ -14,9 +14,20 @@ builder.Host.UseSerilog((ctx, cfg) =>
        .WriteTo.Console();
 });
 
+// Precedence: env var overrides appsettings
+var postgreSqlConnectionString =
+    Environment.GetEnvironmentVariable("POSTGRES_CONNECTION_STRING")
+    ?? builder.Configuration.GetConnectionString("Postgres")
+    ?? throw new InvalidOperationException("Connection string not configured.");
+
 // DI
-builder.Services.AddSingleton<IInstrumentRepository, InstrumentRepository>();
-builder.Services.AddSingleton<IPriceRepository, PriceRepository>();
+builder.Services.AddSingleton<IInstrumentRepository>(sp => new InstrumentRepository(postgreSqlConnectionString));
+builder.Services.AddSingleton<IPriceRepository>(sp => new PriceRepository(postgreSqlConnectionString));
+builder.Services.AddSingleton<IDataProviderRepository>(sp =>
+{
+    var cache = sp.GetRequiredService<IMemoryCache>();
+    return new DataProviderRepository(postgreSqlConnectionString, cache);
+});
 builder.Services.AddSingleton<IBarFetcher, YahooFetcher>();
 builder.Services.AddSingleton<IUniverseResolver, UniverseResolver>();
 
