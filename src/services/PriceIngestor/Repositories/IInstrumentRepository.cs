@@ -9,7 +9,7 @@ public interface IInstrumentRepository
     Task<string?> TryGetCoreIfExistsAsync(CancellationToken ct); // DB default helper
 }
 
-public sealed class InstrumentRepository(IConfiguration cfg) : DataRepository(cfg), IInstrumentRepository
+public sealed class InstrumentRepository(string connectionString) : DataRepository(connectionString), IInstrumentRepository
 {
     public async Task<IReadOnlyList<Instrument>> GetByUniverseAsync(string universeCode, CancellationToken ct)
     {

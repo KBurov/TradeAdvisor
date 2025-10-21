@@ -9,7 +9,7 @@ public interface IDataProviderRepository
     Task<string?> GetBaseUrlAsync(string providerCode, CancellationToken ct);
 }
 
-public sealed class DataProviderRepository(IConfiguration cfg, IMemoryCache cache) : DataRepository(cfg), IDataProviderRepository
+public sealed class DataProviderRepository(string connectionString, IMemoryCache cache) : DataRepository(connectionString), IDataProviderRepository
 {
     private static readonly TimeSpan CacheTtl = TimeSpan.FromHours(1);
 

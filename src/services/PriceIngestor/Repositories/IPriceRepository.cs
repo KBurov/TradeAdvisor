@@ -8,7 +8,7 @@ public interface IPriceRepository
     Task UpsertDailyBatchAsync(long instrumentId, IEnumerable<PriceRow> rows, string source, CancellationToken ct);
 }
 
-public sealed class PriceRepository(IConfiguration cfg) : DataRepository(cfg), IPriceRepository
+public sealed class PriceRepository(string connectionString) : DataRepository(connectionString), IPriceRepository
 {
     public async Task UpsertDailyBatchAsync(long instrumentId, IEnumerable<PriceRow> rows, string source, CancellationToken ct)
     {
