@@ -1,8 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
+using Serilog;
+
 using PriceIngestor.Repositories;
 using PriceIngestor.Services;
-using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,6 +22,7 @@ var postgreSqlConnectionString =
     ?? throw new InvalidOperationException("Connection string not configured.");
 
 // DI
+builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<IInstrumentRepository>(sp => new InstrumentRepository(postgreSqlConnectionString));
 builder.Services.AddSingleton<IPriceRepository>(sp => new PriceRepository(postgreSqlConnectionString));
 builder.Services.AddSingleton<IDataProviderRepository>(sp =>
@@ -28,7 +30,19 @@ builder.Services.AddSingleton<IDataProviderRepository>(sp =>
     var cache = sp.GetRequiredService<IMemoryCache>();
     return new DataProviderRepository(postgreSqlConnectionString, cache);
 });
-builder.Services.AddSingleton<IBarFetcher, YahooFetcher>();
+builder.Services.AddHttpClient("tiingo", http =>
+{
+    http.DefaultRequestHeaders.Accept.ParseAdd("application/json");
+    http.Timeout = TimeSpan.FromSeconds(30);
+})
+.ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+{
+    AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate,
+    PooledConnectionLifetime = TimeSpan.FromMinutes(5),   // refresh DNS/pooled connections
+    ConnectTimeout = TimeSpan.FromSeconds(10)             // fail fast on dead endpoints
+});
+builder.Services.AddKeyedSingleton<IBarFetcher, TiingoFetcher>("long");
+builder.Services.AddKeyedSingleton<IBarFetcher, TiingoFetcher>("short");
 builder.Services.AddSingleton<IUniverseResolver, UniverseResolver>();
 
 builder.Services.AddEndpointsApiExplorer();
@@ -36,13 +50,15 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
+app.UseSerilogRequestLogging();
+
 app.MapGet("/healthz", () => Results.Ok("ok"));
 
 app.MapPost("/ingest/run-today", async (
     [FromQuery] string? universe,
     IUniverseResolver resolver,
     IInstrumentRepository instruments,
-    IBarFetcher fetcher,
+    [FromKeyedServices("short")] IBarFetcher fetcher,
     IPriceRepository prices,
     IConfiguration cfg,
     CancellationToken ct) =>
@@ -83,7 +99,7 @@ app.MapPost("/ingest/backfill", async (
     [FromQuery] string? universe,
     IUniverseResolver resolver,
     IInstrumentRepository instruments,
-    IBarFetcher fetcher,
+    [FromKeyedServices("long")] IBarFetcher fetcher,
     IPriceRepository prices,
     IConfiguration cfg,
     CancellationToken ct) =>

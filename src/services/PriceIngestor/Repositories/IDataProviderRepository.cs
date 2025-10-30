@@ -1,6 +1,5 @@
 using Dapper;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace PriceIngestor.Repositories;
 

@@ -1,4 +1,5 @@
 using Dapper;
+
 using PriceIngestor.Domain;
 
 namespace PriceIngestor.Repositories;

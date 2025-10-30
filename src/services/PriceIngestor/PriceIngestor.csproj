@@ -14,7 +14,7 @@
     <PackageReference Include="Serilog.AspNetCore" Version="8.*" />
     <PackageReference Include="Serilog.Sinks.Console" Version="5.*" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
-    <PackageReference Include="YahooFinanceApi" Version="1.*" />
+    <ProjectReference Include="..\..\common\Common.Rest\Common.Rest.csproj" />
   </ItemGroup>
 
 </Project>
