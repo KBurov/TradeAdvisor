@@ -28,7 +28,7 @@ public sealed class TiingoFetcher(
     Serilog.ILogger logger
 ) : IBarFetcher
 {
-    private const string TiingoApiKeyName = "TIINGO_API_TOKEN";
+    private const string TiingoApiKeyName = "TIINGO_API_KEY";
     private const int MaxRetries = 3;
     private const int MaxBackoffSeconds = 10;
 
