@@ -108,34 +108,52 @@ public sealed class TiingoFetcher(
                     if (resp.StatusCode == HttpStatusCode.NoContent)
                         return Array.Empty<PriceRow>();
 
+                    var ctHeader = resp.Content.Headers.ContentType;
+                    if (!(ctHeader?.MediaType?.Contains("json", StringComparison.OrdinalIgnoreCase) ?? false))
+                    {
+                        logger.Warning("Unexpected content-type from Tiingo for {Symbol}: {CT}", symbol, ctHeader);
+                    }
+
                     var bars = await RestClientUtils.DeserializeBufferedAsync<List<TiingoBar>>(resp, JsonOptions, logger, ct);
                     var result = new List<PriceRow>(bars?.Count ?? 0);
 
-                    if (bars != null)
+                    foreach (var b in (bars ?? Enumerable.Empty<TiingoBar>()).OrderBy(x => x.Date))
                     {
-                        var hadNulls = false;
-
-                        foreach (var b in bars)
+                        if (b.Open is null || b.High is null || b.Low is null || b.Close is null || b.AdjClose is null || b.Volume is null)
                         {
-                            hadNulls |= b.Open is null || b.High is null || b.Low is null || b.Close is null || b.AdjClose is null || b.Volume is null;
-                            result.Add(new PriceRow(
-                                TradeDate: DateOnly.FromDateTime(b.Date.UtcDateTime),
-                                Open: b.Open ?? 0m,
-                                High: b.High ?? 0m,
-                                Low: b.Low ?? 0m,
-                                Close: b.Close ?? 0m,
-                                AdjClose: b.AdjClose ?? 0m,
-                                Volume: b.Volume ?? 0
-                            ));
+                            var badDate = DateOnly.FromDateTime(b.Date.UtcDateTime.Date);
+                            logger.Warning("Null field from Tiingo for {Symbol} on {Date}. Aborting batch [{Start}..{End}].",
+                                           symbol, badDate, startStr, endStr);
+                            break;
                         }
 
-                        if (hadNulls)
-                            logger.Warning("Tiingo returned null fields for {Symbol} [{Start}..{End}] — filled with 0/adjClose as applicable",
-                                           symbol, startStr, endStr);
+                        result.Add(new PriceRow(
+                            TradeDate: DateOnly.FromDateTime(b.Date.UtcDateTime.Date),
+                            Open: b.Open.Value,
+                            High: b.High.Value,
+                            Low: b.Low.Value,
+                            Close: b.Close.Value,
+                            AdjClose: b.AdjClose.Value,
+                            Volume: b.Volume.Value
+                        ));
+
+                        ct.ThrowIfCancellationRequested();
+                    }
+
+                    if (result.Count > 1)
+                    {
+                        result = result
+                            .GroupBy(r => r.TradeDate)
+                            .Select(g => g.Last())
+                            .OrderBy(r => r.TradeDate)
+                            .ToList();
                     }
 
                     if (result.Count == 0)
                         logger.Information("Tiingo returned 0 bars for {Symbol} [{Start}..{End}]", symbol, startStr, endStr);
+
+                    logger.Debug("Tiingo OK {Symbol} [{Start}..{End}] bars={Count} attempts={Attempt}",
+                                 symbol, startStr, endStr, result.Count, attempt);
 
                     return result;
                 }
