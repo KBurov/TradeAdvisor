@@ -2,10 +2,14 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using Serilog;
 
+using Common.Data.Dapper;
+
 using PriceIngestor.Repositories;
 using PriceIngestor.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+DapperBootstrap.EnsureRegistered();
 
 // Serilog (structured console)
 builder.Host.UseSerilog((ctx, cfg) =>
@@ -63,7 +67,7 @@ app.MapPost("/ingest/run-today", async (
     IConfiguration cfg,
     CancellationToken ct) =>
 {
-    var source = cfg.GetSection("Ingest")["SourceTag"] ?? "yahoo";
+    var source = cfg.GetSection("Ingest")["SourceTag"] ?? "tiingo";
     var resolvedUniverse = await resolver.ResolveAsync(universe, ct);
     var day = DateOnly.FromDateTime(DateTime.UtcNow.Date);
 
