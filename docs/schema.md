@@ -1,7 +1,7 @@
 # Database Schema
 
-This document describes the **implemented** PostgreSQL schema as of migration `007_exchanges_global_eodhd.sql`.  
-It will be updated with each new migration (`008_*`, `009_*`, …).
+This document describes the **implemented** PostgreSQL schema as of migration `009_universe_test_1.sql`.  
+It will be updated with each new migration (`010_*`, `011_*`, …).
 
 ---
 
@@ -30,6 +30,7 @@ It will be updated with each new migration (`008_*`, `009_*`, …).
 - [Seed Data](#seed-data-from-001_market_coresql)
 - [Seeding: Global Exchanges — EODHD Suffixes (v007)](#seeding-global-exchanges--eodhd-suffixes-v007)
 - [Data Provider Update: Tiingo Base URL (v008)](#data-provider-update-tiingo-base-url-v008)
+- [Test Universe: `test-1` (v009)](#test-universe-test-1-v009)
 - [Common Queries](#common-queries)
 - [General Notes & Rationale](#general-notes--rationale)
 
@@ -463,6 +464,49 @@ SET base_url = EXCLUDED.base_url;
 - Keeps provider connection data centralized in SQL, not code.
 - Enables ingestion services to build URLs dynamically from the database.
 - Keeps the migration idempotent — re-running it is safe.
+
+---
+
+## Test Universe: `test-1` (v009)
+
+**Migration:** `009_universe_test_1.sql`
+
+**Purpose:** Provide a small, deterministic universe for local testing, backfill validation, and CI smoke runs.
+
+**Behavior:**
+- Ensures the universe `test-1` exists (upsert by `code`).
+- Makes **exactly two** instruments active members: **AAPL** and **MSFT** on **NASDAQ**.
+- Any other *currently active* members in `test-1` are closed by setting `removed_at = NOW()`.
+- Idempotent and safe to re-run; membership history is preserved.
+
+**Notes:**
+- Assumes **AAPL** and **MSFT** exist in `market.instrument` and are linked to **NASDAQ** in `market.exchange`.
+  (They are present from the core seeds as of `001_*`.)
+- This universe is intended for **local/test runs**; production flows should target project-specific universes (e.g., `core`).
+
+**Verify:**
+```sql
+-- Active members of test-1
+SELECT i.symbol, e.code AS exchange, m.added_at, m.removed_at
+FROM market.universe_member m
+JOIN market.universe u USING (universe_id)
+JOIN market.instrument i USING (instrument_id)
+JOIN market.exchange e ON e.exchange_id = i.exchange_id
+WHERE u.code = 'test-1'
+ORDER BY i.symbol;
+
+-- Expect: AAPL (NASDAQ), MSFT (NASDAQ) with removed_at = NULL
+```
+
+**Example Usage:**
+```sql
+-- Count daily price rows for the test universe in a date range
+SELECT COUNT(*) AS rows
+FROM market.price_daily p
+JOIN market.v_universe_current c USING (instrument_id)
+WHERE c.universe_code = 'test-1'
+  AND p.trade_date BETWEEN DATE '2024-01-01' AND DATE '2024-12-31';
+```
 
 ---
 
