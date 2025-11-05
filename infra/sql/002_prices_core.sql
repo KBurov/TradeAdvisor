@@ -37,7 +37,7 @@ BEGIN
     part_name := format('market.price_daily_%s', to_char(d, 'YYYY_MM'));
 
     EXECUTE format(
-      'CREATE TABLE IF NOT EXISTS market.%I PARTITION OF market.price_daily
+      'CREATE TABLE IF NOT EXISTS %I PARTITION OF market.price_daily
        FOR VALUES FROM (%L) TO (%L);',
        part_name, d, next_d
     );
