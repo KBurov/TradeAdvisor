@@ -34,7 +34,7 @@ DECLARE
 BEGIN
   WHILE d <= end_month LOOP
     next_d := (d + INTERVAL '1 month')::date;
-    part_name := format('price_daily_%s', to_char(d, 'YYYY_MM'));
+    part_name := format('market.price_daily_%s', to_char(d, 'YYYY_MM'));
 
     EXECUTE format(
       'CREATE TABLE IF NOT EXISTS market.%I PARTITION OF market.price_daily
