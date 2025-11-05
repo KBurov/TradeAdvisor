@@ -15,11 +15,15 @@ public sealed class InstrumentRepository(string connectionString) : DataReposito
     public async Task<IReadOnlyList<Instrument>> GetByUniverseAsync(string universeCode, CancellationToken ct)
     {
         const string sql = """
-        SELECT i.instrument_id AS InstrumentId, i.symbol AS Symbol
-        FROM market.v_universe_current c
-        JOIN market.instrument i USING (instrument_id)
-        WHERE c.universe_code = @code
-        ORDER BY i.symbol;
+            SELECT i.instrument_id AS InstrumentId,
+                   i.symbol        AS Symbol,
+                   MAX(p.trade_date) AS LastTradeDate
+            FROM market.v_universe_current c
+            JOIN market.instrument i USING (instrument_id)
+            LEFT JOIN market.price_daily p ON p.instrument_id = i.instrument_id
+            WHERE c.universe_code = @code
+            GROUP BY i.instrument_id, i.symbol
+            ORDER BY i.symbol;
         """;
 
         await using var cn = Conn();
