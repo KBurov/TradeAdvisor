@@ -1,7 +1,7 @@
 # Database Schema
 
-This document describes the **implemented** PostgreSQL schema as of migration `009_universe_test_1.sql`.  
-It will be updated with each new migration (`010_*`, `011_*`, …).
+This document describes the **implemented** PostgreSQL schema as of migration `010_price_daily_ensure_partitions.sql`.  
+It will be updated with each new migration (`011_*`, `012_*`, …).
 
 ---
 
@@ -31,6 +31,7 @@ It will be updated with each new migration (`010_*`, `011_*`, …).
 - [Seeding: Global Exchanges — EODHD Suffixes (v007)](#seeding-global-exchanges--eodhd-suffixes-v007)
 - [Data Provider Update: Tiingo Base URL (v008)](#data-provider-update-tiingo-base-url-v008)
 - [Test Universe: `test-1` (v009)](#test-universe-test-1-v009)
+- [Partition Ensurer for `price_daily` (v010)](#partition-ensurer-for-price_daily-v010)
 - [Common Queries](#common-queries)
 - [General Notes & Rationale](#general-notes--rationale)
 
@@ -507,6 +508,27 @@ JOIN market.v_universe_current c USING (instrument_id)
 WHERE c.universe_code = 'test-1'
   AND p.trade_date BETWEEN DATE '2024-01-01' AND DATE '2024-12-31';
 ```
+
+---
+
+## Partition Ensurer for `price_daily` (v010)
+
+**Migration:** `010_price_daily_ensure_partitions.sql`
+
+**What:** Adds `market.ensure_price_daily_partitions(p_start DATE, p_end DATE)` and an optional **DEFAULT** partition.
+
+**Purpose:**
+- Prevent `23514: no partition … found for row` by creating missing monthly partitions on demand for any date range you’re about to insert.
+- DEFAULT partition acts as a safety net if the app forgets to call the function.
+
+**Usage:**
+```sql
+SELECT market.ensure_price_daily_partitions(DATE '2024-01-01', DATE '2025-11-05');
+```
+
+**Notes:**
+- Function is **idempotent** and uses an advisory lock to avoid DDL races.
+- Keep calling it before writing batches to `market.price_daily`.
 
 ---
 
