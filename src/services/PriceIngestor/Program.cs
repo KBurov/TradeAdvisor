@@ -62,80 +62,65 @@ app.MapPost("/ingest/run-today", async (
     [FromQuery] string? universe,
     IUniverseResolver resolver,
     IInstrumentRepository instruments,
-    [FromKeyedServices("short")] IBarFetcher fetcher,
+    [FromKeyedServices("short")] IBarFetcher shortFetcher,
+    [FromKeyedServices("long")]  IBarFetcher longFetcher,
     IPriceRepository prices,
     IConfiguration cfg,
     CancellationToken ct) =>
 {
-    var source = cfg.GetSection("Ingest")["SourceTag"] ?? "tiingo";
+    var shortSource = cfg.GetValue<string>("Ingest:ShortSourceTag") ?? "eodhd";
+    var longSource = cfg.GetValue<string>("Ingest:LongSourceTag")  ?? "tiingo";
     var resolvedUniverse = await resolver.ResolveAsync(universe, ct);
-    var day = DateOnly.FromDateTime(DateTime.UtcNow.Date);
 
-    var list = await instruments.GetByUniverseAsync(resolvedUniverse, ct);
-    var results = new List<object>();
+    var staleDays = cfg.GetValue<int?>("Ingest:StaleDays") ?? 183;
+    var longBackfillYears = cfg.GetValue<int?>("Ingest:LongBackfillYears") ?? 3;
+
+    var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+    var list  = await instruments.GetByUniverseAsync(resolvedUniverse, ct);
+
+    var results = new List<object>(list.Count);
     var ok = 0; var fail = 0;
 
     foreach (var inst in list)
     {
         try
         {
-            var rows = await fetcher.GetDailyAsync(inst.Symbol, day, day, ct);
-            await prices.UpsertDailyBatchAsync(inst.InstrumentId, rows, source, ct);
-            Log.Information("Upserted {Count} rows for {Symbol} {Date} (universe={Universe})",
-                rows.Count, inst.Symbol, day, resolvedUniverse);
-            results.Add(new { inst.Symbol, rows = rows.Count, status = "ok" });
+            var last = inst.LastTradeDate;
+            var useLong = last is null || (today.DayNumber - last.Value.DayNumber) > staleDays;
+            var start = useLong
+                ? new DateOnly(today.Year - longBackfillYears, today.Month, today.Day)
+                : last!.Value.AddDays(1);
+            var source = useLong ? longSource : shortSource;
+
+            // nothing to do?
+            if (start > today)
+            {
+                results.Add(new { inst.Symbol, rows = 0, status = "up-to-date" });
+                continue;
+            }
+
+            var fetcher = useLong ? longFetcher : shortFetcher;
+            var rows = await fetcher.GetDailyAsync(inst.Symbol, start, today, ct);
+
+            if (rows.Count > 0)
+                await prices.UpsertDailyBatchAsync(inst.InstrumentId, rows, source, ct);
+
+            Log.Information(
+                "{Fetcher} upserted {Count} rows for {Symbol} {Start}->{End} (universe={Universe}) last={Last}",
+                useLong ? "long" : "short", rows.Count, inst.Symbol, start, today, resolvedUniverse, last);
+
+            results.Add(new { inst.Symbol, rows = rows.Count, status = "ok", mode = useLong ? "long" : "short" });
             ok++;
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Failed for {Symbol} {Date} (universe={Universe})", inst.Symbol, day, resolvedUniverse);
+            Log.Error(ex, "Failed for {Symbol} (universe={Universe})", inst.Symbol, resolvedUniverse);
             results.Add(new { inst.Symbol, rows = 0, status = "error", error = ex.Message });
             fail++;
         }
     }
 
-    return Results.Ok(new { universe = resolvedUniverse, date = day, instruments = list.Count, ok, fail, results });
-});
-
-app.MapPost("/ingest/backfill", async (
-    [FromQuery] DateOnly start,
-    [FromQuery] DateOnly? end,
-    [FromQuery] string? universe,
-    IUniverseResolver resolver,
-    IInstrumentRepository instruments,
-    [FromKeyedServices("long")] IBarFetcher fetcher,
-    IPriceRepository prices,
-    IConfiguration cfg,
-    CancellationToken ct) =>
-{
-    var source = cfg.GetSection("Ingest")["SourceTag"] ?? "yahoo";
-    var to = end ?? DateOnly.FromDateTime(DateTime.UtcNow.Date);
-    var resolvedUniverse = await resolver.ResolveAsync(universe, ct);
-
-    var list = await instruments.GetByUniverseAsync(resolvedUniverse, ct);
-    var results = new List<object>();
-    var ok = 0; var fail = 0;
-
-    foreach (var inst in list)
-    {
-        try
-        {
-            var rows = await fetcher.GetDailyAsync(inst.Symbol, start, to, ct);
-            await prices.UpsertDailyBatchAsync(inst.InstrumentId, rows, source, ct);
-            Log.Information("Upserted {Count} rows for {Symbol} {Start}->{End} (universe={Universe})",
-                rows.Count, inst.Symbol, start, to, resolvedUniverse);
-            results.Add(new { inst.Symbol, rows = rows.Count, status = "ok" });
-            ok++;
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Failed for {Symbol} {Start}->{End} (universe={Universe})", inst.Symbol, start, to, resolvedUniverse);
-            results.Add(new { inst.Symbol, rows = 0, status = "error", error = ex.Message });
-            fail++;
-        }
-    }
-
-    return Results.Ok(new { universe = resolvedUniverse, start, end = to, instruments = list.Count, ok, fail, results });
+    return Results.Ok(new { universe = resolvedUniverse, date = today, instruments = list.Count, ok, fail, results });
 });
 
 // Swagger in dev
