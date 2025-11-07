@@ -33,19 +33,23 @@ This roadmap outlines major milestones for the first 90 days of the project.
 
 ## Phase 3 — Data & Features (Weeks 7–9)
 ✅ Completed:
-- Defined and documented full DB schema (migrations 001–007).
+- Defined and documented full DB schema (migrations 001–010).
 - Added provider-related tables (`market.data_provider`, `exchange_provider_code`, etc.).
 - Introduced helper SQL function `f_build_eodhd_symbol()` for dynamic ticker construction.
-- Added EODHD and Tiingo integration design (ADR-0007).
+- Implemented and validated TiingoFetcher with retry logic, null-safety, and deduplication.
+- Added `ensure_price_daily_partitions()` function and automated partition creation.
+- Created comprehensive unit tests for `Common.Rest.RestClientUtils` and `PriceIngestor.Services.TiingoFetcher`.
 
 In progress:
-- Price Ingestor service migration from Yahoo Finance API.
-- Implement logic to use Tiingo for initial fill and EODHD for batch updates.
+- Refactor `PriceIngestor` endpoints (retain only `healthz` and `run-today`).
+- Extend `InstrumentRepository` to include last known price date for smarter fetcher selection.
+- Add automatic long/short fetcher selection (Tiingo → long, future EODHD → short).
 
 **Deliverables:**
-- Verified schema (`schema.md` updated to v007)
-- Multi-provider ready database
-- Initial price ingestion logic
+- Verified schema (`schema.md` updated to v010)
+- Fully operational Tiingo ingestion pipeline
+- Partition-aware price storage
+- Unit test coverage for core ingestion utilities
 
 ---
 
@@ -102,5 +106,5 @@ In progress:
 - Each milestone produces working, incremental deliverables.
 - ADRs will be updated if major changes occur.
 - Roadmap will be refined continuously.
-- **Next:** complete Tiingo + EODHD integration in the Price Ingestor service,  
-  then proceed with the feature computation and validation modules.
+- **Next:** finalize `PriceIngestor` refactor (long/short fetchers),  
+  then start implementing the Feature Computation Service (fundamental and technical metrics) triggered by Kafka messages.
