@@ -75,6 +75,18 @@ public class RestClientUtilsTests
     }
 
     [Fact]
+    public void ComputeRetryDelay_FallsBackToBackoff_WhenNoRetryAfter()
+    {
+        var headers = new HttpResponseMessage().Headers;
+
+        var d = RestClientUtils.ComputeRetryDelay(headers, attempt: 3, maxBackoffSeconds: 2);
+
+        // Must be >= 0 and <= cap (jitter makes exact value non-deterministic)
+        d.Should().BeGreaterThanOrEqualTo(TimeSpan.Zero);
+        d.Should().BeLessThanOrEqualTo(TimeSpan.FromSeconds(2));
+    }
+
+    [Fact]
     public async Task SafeReadStringAsync_ReturnsBody_OnSuccess()
     {
         var msg = new HttpResponseMessage(HttpStatusCode.OK)
@@ -92,6 +104,18 @@ public class RestClientUtilsTests
         var msg = new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = new ThrowingContent()
+        };
+
+        var s = await RestClientUtils.SafeReadStringAsync(msg, default);
+        s.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task SafeReadStringAsync_ReturnsEmpty_WhenBodyThrowsAfterDelay()
+    {
+        var msg = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new SlowThrowingContent(TimeSpan.FromMilliseconds(50))
         };
 
         var s = await RestClientUtils.SafeReadStringAsync(msg, default);
@@ -141,6 +165,28 @@ public class RestClientUtilsTests
         await act.Should().ThrowAsync<JsonException>();
     }
 
+    [Fact]
+    public async Task DeserializeBufferedAsync_Throws_WhenAlreadyCanceled()
+    {
+        // Arrange: simple valid JSON
+        var resp = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("{\"a\":1}", Encoding.UTF8, "application/json")
+        };
+
+        var logger = new LoggerConfiguration().CreateLogger();
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        var act = async () => await RestClientUtils.DeserializeBufferedAsync<object>(
+            resp,
+            new JsonSerializerOptions(),
+            logger,
+            cts.Token);
+
+        await act.Should().ThrowAsync<TaskCanceledException>();
+    }
+
     private sealed class SampleDto
     {
         public int A { get; set; }
@@ -154,6 +200,24 @@ public class RestClientUtilsTests
     {
         protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context)
             => Task.FromException(new InvalidOperationException("boom"));
+
+        protected override bool TryComputeLength(out long length)
+        {
+            length = 0;
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Content that delays, then throws during serialization to simulate flaky streams.
+    /// </summary>
+    private sealed class SlowThrowingContent(TimeSpan delay) : HttpContent
+    {
+        protected override async Task SerializeToStreamAsync(Stream stream, TransportContext? context)
+        {
+            await Task.Delay(delay);
+            throw new InvalidOperationException("simulated write failure");
+        }
 
         protected override bool TryComputeLength(out long length)
         {
