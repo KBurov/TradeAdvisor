@@ -71,21 +71,14 @@ public sealed class TiingoFetcherTests
     [Fact]
     public async Task GetDaily_AbortsOnNullField_ReturnsPartial()
     {
-        var payload = JsonSerializer.Serialize(new[]
-        {
-            new TiingoBarDto {
-                date = DateTime.Parse("2024-01-01T00:00:00Z"),
-                open = 1m, high = 2m, low = 0.9m, close = 1.5m, volume = 90L, adjClose = 1.4m
-            },
-            new TiingoBarDto {
-                date = DateTime.Parse("2024-01-02T00:00:00Z"),
-                open = null, high = 2m, low = 1m, close = 1.8m, volume = 100L, adjClose = 1.7m
-            },
-            new TiingoBarDto {
-                date = DateTime.Parse("2024-01-03T00:00:00Z"),
-                open = 2m, high = 3m, low = 1m, close = 2.5m, volume = 110L, adjClose = 2.4m
-            },
-        });
+        // Build JSON explicitly to allow a null field in the second bar
+        var payload = /*lang=json*/ """
+        [
+            {"date":"2024-01-01T00:00:00Z","open":1,"high":2,"low":0.9,"close":1.5,"volume":90,"adjClose":1.4},
+            {"date":"2024-01-02T00:00:00Z","open":null,"high":2,"low":1,"close":1.8,"volume":100,"adjClose":1.7},
+            {"date":"2024-01-03T00:00:00Z","open":2,"high":3,"low":1,"close":2.5,"volume":110,"adjClose":2.4}
+        ]
+        """;
 
         var handler = new QueueHandler(OkJson(payload));
         var httpFactory = new Mock<IHttpClientFactory>();
@@ -268,17 +261,6 @@ public sealed class TiingoFetcherTests
     }
 
     // ------------- helpers -------------
-    private sealed class TiingoBarDto
-    {
-        public DateTime date { get; set; }
-        public decimal? open { get; set; }
-        public decimal? high { get; set; }
-        public decimal? low { get; set; }
-        public decimal? close { get; set; }
-        public decimal? adjClose { get; set; }
-        public long? volume { get; set; }
-    }
-
     private static HttpResponseMessage OkJson(string json) =>
         new(HttpStatusCode.OK) { Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json") };
 
