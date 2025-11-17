@@ -1,7 +1,7 @@
 # Database Schema
 
-This document describes the **implemented** PostgreSQL schema as of migration `010_price_daily_ensure_partitions.sql`.  
-It will be updated with each new migration (`011_*`, `012_*`, …).
+This document describes the **implemented** PostgreSQL schema as of migration `011_eodhd_base_url.sql`.  
+It will be updated with each new migration (`012_*`, `013_*`, …).
 
 ---
 
@@ -32,6 +32,7 @@ It will be updated with each new migration (`011_*`, `012_*`, …).
 - [Data Provider Update: Tiingo Base URL (v008)](#data-provider-update-tiingo-base-url-v008)
 - [Test Universe: `test-1` (v009)](#test-universe-test-1-v009)
 - [Partition Ensurer for `price_daily` (v010)](#partition-ensurer-for-price_daily-v010)
+- [Data Provider Update: Eodhd Base URL (v011)](#data-provider-update-eodhd-base-url-v011)
 - [Common Queries](#common-queries)
 - [General Notes & Rationale](#general-notes--rationale)
 
@@ -457,9 +458,9 @@ SET base_url = EXCLUDED.base_url;
 
 **Result:**
 
-| code   | name   | base_url                                         | notes                                     |
-| ------ | ------ | ------------------------------------------------ | ----------------------------------------- |
-| TIINGO | Tiingo | [https://api.tiingo.com](https://api.tiingo.com) | REST base URL for Tiingo (EOD & intraday) |
+| code   | name   | base_url                                         | notes                                      |
+| ------ | ------ | ------------------------------------------------ | ------------------------------------------ |
+| TIINGO | Tiingo | [https://api.tiingo.com](https://api.tiingo.com) | REST base URL for Tiingo (EOD & intraday). |
 
 **Rationale:**
 - Keeps provider connection data centralized in SQL, not code.
@@ -529,6 +530,34 @@ SELECT market.ensure_price_daily_partitions(DATE '2024-01-01', DATE '2025-11-05'
 **Notes:**
 - Function is **idempotent** and uses an advisory lock to avoid DDL races.
 - Keep calling it before writing batches to `market.price_daily`.
+
+---
+
+## Data Provider Update: Eodhd Base URL (v011)
+
+This migration ensures that the **Eodhd** provider entry in  
+`market.data_provider` has the correct canonical REST endpoint URL.
+
+**SQL:**
+
+```sql
+INSERT INTO market.data_provider (code, name, base_url, notes)
+VALUES
+  ('EODHD', 'EOD Historical Data', 'https://eodhd.com', 'REST base URL for Eodhd (EOD & intraday).')
+ON CONFLICT (code) DO UPDATE
+SET base_url = EXCLUDED.base_url;
+```
+
+**Result:**
+
+| code   | name               | base_url                               | notes                                     |
+| ------ | ------------------ | -------------------------------------- | ----------------------------------------- |
+| EODHD | EOD Historical Data | [https://eodhd.com](https://eodhd.com) | REST base URL for Eodhd (EOD & intraday). |
+
+**Rationale:**
+- Keeps provider connection data centralized in SQL, not code.
+- Enables ingestion services to build URLs dynamically from the database.
+- Keeps the migration idempotent — re-running it is safe.
 
 ---
 
