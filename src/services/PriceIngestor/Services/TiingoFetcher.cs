@@ -11,16 +11,6 @@ using PriceIngestor.Repositories;
 
 namespace PriceIngestor.Services;
 
-public sealed record TiingoBar(
-    [property: JsonPropertyName("date")] DateTimeOffset Date,
-    [property: JsonPropertyName("open")] decimal? Open,
-    [property: JsonPropertyName("high")] decimal? High,
-    [property: JsonPropertyName("low")] decimal? Low,
-    [property: JsonPropertyName("close")] decimal? Close,
-    [property: JsonPropertyName("volume")] long? Volume,
-    [property: JsonPropertyName("adjClose")] decimal? AdjClose
-);
-
 public sealed class TiingoFetcher(
     IHttpClientFactory httpFactory,
     IDataProviderRepository dataProviderRepository,
@@ -28,6 +18,16 @@ public sealed class TiingoFetcher(
     Serilog.ILogger logger
 ) : IBarFetcher
 {
+    private sealed record TiingoBar(
+        [property: JsonPropertyName("date")] DateTimeOffset Date,
+        [property: JsonPropertyName("open")] decimal? Open,
+        [property: JsonPropertyName("high")] decimal? High,
+        [property: JsonPropertyName("low")] decimal? Low,
+        [property: JsonPropertyName("close")] decimal? Close,
+        [property: JsonPropertyName("volume")] long? Volume,
+        [property: JsonPropertyName("adjClose")] decimal? AdjClose
+    );
+
     private const string TiingoApiKeyName = "TIINGO_API_KEY";
     private const int MaxRetries = 3;
     private const int MaxBackoffSeconds = 10;
