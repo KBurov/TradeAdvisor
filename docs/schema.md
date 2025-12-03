@@ -1,7 +1,7 @@
 # Database Schema
 
-This document describes the **implemented** PostgreSQL schema as of migration `011_eodhd_base_url.sql`.  
-It will be updated with each new migration (`012_*`, `013_*`, …).
+This document describes the **implemented** PostgreSQL schema as of migration `012_provider_symbol_function.sql`.  
+It will be updated with each new migration (`013_*`, `014_*`, …).
 
 ---
 
@@ -26,7 +26,8 @@ It will be updated with each new migration (`012_*`, `013_*`, …).
   - [15) market.data_provider (v006)](#15-marketdata_provider-v006)
   - [16) market.exchange_provider_code (v006)](#16-marketexchange_provider_code-v006)
   - [17) market.instrument_provider_symbol (v006)](#17-marketinstrument_provider_symbol-v006)
-  - [18) Function: market.f_build_eodhd_symbol (v006)](#18-function-marketf_build_eodhd_symbol-v006)
+  - [18) Function: market.f_build_provider_symbol (v012)](#18-function-marketf_build_provider_symbol-v012)
+  - [19) Function: market.f_build_eodhd_symbol (v012)](#19-function-marketf_build_eodhd_symbol-v012)
 - [Seed Data](#seed-data-from-001_market_coresql)
 - [Seeding: Global Exchanges — EODHD Suffixes (v007)](#seeding-global-exchanges--eodhd-suffixes-v007)
 - [Data Provider Update: Tiingo Base URL (v008)](#data-provider-update-tiingo-base-url-v008)
@@ -347,38 +348,56 @@ Covers exceptions where a provider uses a non-standard ticker format
 
 ---
 
-### 18) Function: `market.f_build_eodhd_symbol` (v006)
+### 18) Function: `market.f_build_provider_symbol` (v012)
 
-Helper SQL function that constructs the correct EODHD symbol.
+General-purpose helper that builds a provider-specific symbol for any configured provider.
 
-- **Signature:**  
+- **Signature:**
   ```sql
-  market.f_build_eodhd_symbol(p_instrument_id BIGINT) RETURNS TEXT
+  market.f_build_provider_symbol(
+    p_instrument_id BIGINT,
+    p_provider_code TEXT
+  ) RETURNS TEXT
   ```
 - **Logic:**
-  1. If an explicit override exists in `market.instrument_provider_symbol` → return it.  
-  2. Otherwise, combine the base symbol from `market.instrument` with `.` and the suffix from  
-     `market.exchange_provider_code.symbol_suffix` (e.g., `AAPL` + `.US` → `AAPL.US`).  
-  3. If neither mapping exists, return the plain symbol.
+  1. Resolve `p_provider_code` to `market.data_provider.provider_id`.
+  2. If an override exists in `market.instrument_provider_symbol` for that provider → return it.
+  3. Otherwise, combine `market.instrument.symbol` with the provider’s suffix from
+     `market.exchange_provider_code.symbol_suffix` (e.g., `AAPL` + `.US` → `AAPL.US`).
+  4. If neither mapping exists, return the plain symbol.
 
 - **Example:**
 
   ```sql
   SELECT i.symbol,
-         market.f_build_eodhd_symbol(i.instrument_id) AS eodhd_symbol
+         market.f_build_provider_symbol(i.instrument_id, 'EODHD') AS eodhd_symbol,
+         market.f_build_provider_symbol(i.instrument_id, 'TIINGO') AS tiingo_symbol
   FROM market.instrument i
   WHERE i.symbol IN ('AAPL','MSFT','QQQ');
   ```
 
-  | symbol | eodhd_symbol |
-  |--------|--------------|
-  | AAPL   | AAPL.US      |
-  | MSFT   | MSFT.US      |
-  | QQQ    | QQQ.US       |
+  | symbol | eodhd_symbol | tiingo_symbol |
+  |--------|--------------|---------------|
+  | AAPL   | AAPL.US      | AAPL          |
+  | MSFT   | MSFT.US      | MSFT          |
+  | QQQ    | QQQ.US       | QQQ           |
 
 - **Rationale:**  
-  Centralizes provider symbol construction in SQL, avoiding hard-coded suffix logic in services  
-  and simplifying future provider support.
+  Centralizes provider symbol construction for **all** providers, enabling additional provider
+  support without new bespoke functions.
+
+---
+
+### 19) Function: `market.f_build_eodhd_symbol` (v012)
+
+Backward-compatible wrapper for the EODHD provider.
+
+- **Signature:**
+  ```sql
+  market.f_build_eodhd_symbol(p_instrument_id BIGINT) RETURNS TEXT
+  ```
+- **Logic:** delegates to `market.f_build_provider_symbol(p_instrument_id, 'EODHD')`.
+- **Rationale:** preserves existing usage while adopting the provider-agnostic builder.
 
 ---
 
@@ -396,8 +415,8 @@ This migration seeds additional non-US exchanges and wires their **EODHD** symbo
 into `market.exchange_provider_code`.
 
 > **Important:** suffixes are stored **without the leading dot** (e.g., `US`, `L`, `TO`).  
-> The final request symbol (e.g., `AAPL.US`) is produced by  
-> `market.f_build_eodhd_symbol(instrument_id)` from **v006**.
+> The final request symbol (e.g., `AAPL.US`) is produced by
+> `market.f_build_eodhd_symbol(instrument_id)` from **v012**.
 
 **Mappings inserted/updated (`is_default = true`):**
 
